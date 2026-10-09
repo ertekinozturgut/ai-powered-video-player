@@ -13,6 +13,10 @@ public sealed class PasswordResetForm
     [Required, StringLength(128, MinimumLength = 12), DataType(DataType.Password)] public string NewPassword { get; set; } = "";
     [Required, DataType(DataType.Password), Compare(nameof(NewPassword), ErrorMessage = "Parolalar eşleşmiyor.")] public string ConfirmPassword { get; set; } = "";
 }
+public sealed class PasswordRecoveryRequestForm
+{
+    [Required, EmailAddress, StringLength(254)] public string Email { get; set; } = "";
+}
 public sealed class UploadForm
 {
     [Required, StringLength(180)] public string Title { get; set; } = "";

@@ -7,7 +7,7 @@
             <input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl" />
             <div asp-validation-summary="ModelOnly" class="form-error" role="alert"></div>
             <div><label asp-for="Email">E-posta adresi</label><input asp-for="Email" class="form-control" autocomplete="username" /><span asp-validation-for="Email" class="form-error"></span></div>
-            <div><label asp-for="Password">Parola</label><input asp-for="Password" class="form-control" autocomplete="current-password" /><span asp-validation-for="Password" class="form-error"></span></div>
+            <div><label asp-for="Password">Parola</label><input asp-for="Password" class="form-control" autocomplete="current-password" /><span asp-validation-for="Password" class="form-error"></span><a class="forgot-password-link" href="/account/forgot-password">Şifremi unuttum</a></div>
             <button class="btn btn-primary btn-lg" type="submit">Giriş yap <span aria-hidden="true">→</span></button>
         </form>
         @if (ViewBag.AllowRegistration == true) { <p class="auth-foot">Yeni misiniz? <a href="/account/register">Hesap oluşturun</a></p> }

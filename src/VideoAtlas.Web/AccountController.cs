@@ -39,6 +39,19 @@ public sealed class AccountController(SignInManager<IdentityUser> signIn, UserMa
         ModelState.AddModelError("", "Hesap açılamadı. Başka bir e-posta deneyin; parola en az 12 karakter, büyük/küçük harf, rakam ve sembol içermelidir.");
         return View(form);
     }
+    [AllowAnonymous, HttpGet("forgot-password")]
+    public IActionResult ForgotPassword() => View(new PasswordRecoveryRequestForm());
+
+    [AllowAnonymous, HttpPost("forgot-password"), EnableRateLimiting("login")]
+    public IActionResult ForgotPassword(PasswordRecoveryRequestForm form)
+    {
+        // Never reveal whether an account exists. This local installation has no mail transport;
+        // password reset remains an administrator-mediated operation.
+        if (!ModelState.IsValid) return View(form);
+        logger.LogInformation("Password recovery requested: {TraceId}", HttpContext.TraceIdentifier);
+        TempData["RecoveryMessage"] = "Hesap mevcutsa parola sıfırlama talebi kaydedildi. Yerel kurulumlarda çalışma alanı yöneticiniz yeni parolayı güvenli kanaldan paylaşır.";
+        return RedirectToAction(nameof(ForgotPassword));
+    }
     [Authorize, HttpPost("logout")]
     public async Task<IActionResult> Logout() { await signIn.SignOutAsync(); return Redirect("/account/login"); }
 
