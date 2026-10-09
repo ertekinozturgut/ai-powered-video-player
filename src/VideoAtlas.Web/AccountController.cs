@@ -41,4 +41,21 @@ public sealed class AccountController(SignInManager<IdentityUser> signIn, UserMa
     }
     [Authorize, HttpPost("logout")]
     public async Task<IActionResult> Logout() { await signIn.SignOutAsync(); return Redirect("/account/login"); }
+
+    [Authorize, HttpGet("password")]
+    public IActionResult Password() => View(new PasswordResetForm { Email = User.Identity?.Name ?? "" });
+
+    [Authorize, HttpPost("password")]
+    public async Task<IActionResult> Password(PasswordResetForm form)
+    {
+        if (!string.Equals(form.Email, User.Identity?.Name, StringComparison.OrdinalIgnoreCase)) ModelState.AddModelError(nameof(form.Email), "Yalnızca kendi hesabınızın parolasını değiştirebilirsiniz.");
+        if (!ModelState.IsValid) return View(form);
+        var user = await users.FindByEmailAsync(form.Email);
+        if (user is null) return Forbid();
+        var result = await users.ResetPasswordAsync(user, await users.GeneratePasswordResetTokenAsync(user), form.NewPassword);
+        if (!result.Succeeded) { foreach (var error in result.Errors) ModelState.AddModelError("", error.Description); return View(form); }
+        await signIn.RefreshSignInAsync(user);
+        TempData["AccountMessage"] = "Parolanız değiştirildi.";
+        return RedirectToAction(nameof(Password));
+    }
 }

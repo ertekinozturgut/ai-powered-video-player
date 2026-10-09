@@ -24,7 +24,7 @@
         @if (User.IsInRole("Administrator")) { <a href="/admin/providers" class="nav-item" aria-label="AI sağlayıcı yönetimi"><span aria-hidden="true">⚙</span><span class="nav-label">AI sağlayıcıları</span></a> }
         <nav aria-label="Ana gezinme"><a href="/" aria-label="Video kütüphanesi" class="nav-item @(Context.Request.Path == "/privacy" ? "" : "active")"><span aria-hidden="true">▦</span><span class="nav-label">Video kütüphanesi</span></a><a href="/privacy" aria-label="Gizlilik ve veriler" class="nav-item @(Context.Request.Path == "/privacy" ? "active" : "")"><span aria-hidden="true">◇</span><span class="nav-label">Gizlilik ve veriler</span></a></nav>
         <div class="sidebar-note"><img src="/images/atlas-orb.svg" alt="" width="88" height="88" /><span class="eyebrow">DAHA FAZLASINI KEŞFEDİN</span><strong>Her an, yeni bir fikir.</strong><p>Videolarınızla konuşun.<br />Bilgiye doğrudan ulaşın.</p></div>
-        <div class="account-block"><span class="avatar">V</span><div><strong>Çalışma hesabı</strong><small>@User.Identity.Name</small></div></div>
+        <div class="account-block"><span class="avatar">V</span><div><strong>Çalışma hesabı</strong><small>@User.Identity.Name</small><a href="/account/password">Parolamı değiştir</a></div></div>
         <form action="/account/logout" method="post">@Html.AntiForgeryToken()<button class="signout" type="submit">Güvenli çıkış <span class="arrow-out" aria-hidden="true"></span></button></form>
     </aside>
 }
