@@ -67,7 +67,7 @@ builder.Services.AddRateLimiter(o =>
 var app = builder.Build();
 Directory.CreateDirectory(dataRoot);
 var accountCommand = args.Any(a => a is "--create-user" or "--reset-password" or "--grant-admin" or "--revoke-admin");
-var providerCommand = args.Contains("--configure-providers", StringComparer.Ordinal);
+var providerCommand = args.Contains("--configure-providers", StringComparer.Ordinal) || args.Contains("--configure-ollama", StringComparer.Ordinal);
 // SQLite worker recovery assumes exactly one application process per data volume.
 using var instanceLock = accountCommand || providerCommand ? null : new FileStream(Path.Combine(dataRoot, "instance.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
 using (var scope = app.Services.CreateScope())
@@ -79,7 +79,7 @@ using (var scope = app.Services.CreateScope())
         scope.ServiceProvider.GetRequiredService<IOptions<AiOptions>>().Value, CancellationToken.None);
     if (providerCommand)
     {
-        await ProviderProvisioning.RunAsync(scope.ServiceProvider);
+        await ProviderProvisioning.RunAsync(scope.ServiceProvider, args.Contains("--configure-ollama", StringComparer.Ordinal));
         return;
     }
     if (accountCommand)

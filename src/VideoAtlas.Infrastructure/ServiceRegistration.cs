@@ -82,10 +82,12 @@ public static class ServiceRegistration
         services.AddScoped<ILlmAdapter, OpenAiAdapter>();
         services.AddScoped<ILlmAdapter, AzureFoundryAdapter>();
         services.AddScoped<ILlmAdapter, N8nAdapter>();
+        services.AddScoped<ILlmAdapter, OllamaAdapter>();
         services.AddScoped<IEmbeddingAdapter, OpenRouterAdapter>();
         services.AddScoped<IEmbeddingAdapter, OpenAiAdapter>();
         services.AddScoped<IEmbeddingAdapter, AzureFoundryAdapter>();
         services.AddScoped<IEmbeddingAdapter, N8nAdapter>();
+        services.AddScoped<IEmbeddingAdapter, OllamaAdapter>();
         services.AddScoped<IVideoIntelligence>(s => s.GetRequiredService<VideoIntelligence>());
         services.AddHostedService<VideoWorker>();
         return services;

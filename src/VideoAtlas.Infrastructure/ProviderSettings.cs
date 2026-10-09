@@ -42,6 +42,14 @@ public sealed class ProviderEndpointPolicy(IOptions<ProviderSecurityOptions> opt
 {
     public void Validate(string endpoint, string kind)
     {
+        if (kind == "ollama")
+        {
+            if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var local) || local.Scheme != "http" ||
+                !local.IsLoopback || local.Port != 11434 || local.UserInfo.Length > 0 || local.Query.Length > 0 ||
+                local.Fragment.Length > 0 || !endpoint.EndsWith("/", StringComparison.Ordinal))
+                throw new AppException(400, "provider_endpoint", "Yerel Ollama yalnızca http://127.0.0.1:11434/ üzerinde çalışabilir.");
+            return;
+        }
         if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) || uri.Scheme != "https" ||
             uri.UserInfo.Length > 0 || uri.Query.Length > 0 || uri.Fragment.Length > 0 ||
             !uri.IsDefaultPort || !options.Value.AllowedHosts.Contains(uri.IdnHost, StringComparer.OrdinalIgnoreCase))
@@ -61,7 +69,6 @@ public sealed class ProviderSettingsStore(AppDbContext db, IDataProtectionProvid
     private IDataProtector Protector(string id) => protection.CreateProtector("VideoAtlas.ProviderSecrets.v1", id);
     public async Task InitializeAsync(AiOptions legacy, CancellationToken ct)
     {
-        if (await db.ProviderSelections.AnyAsync(ct)) return;
         var profiles = new[]
         {
             Profile("speech-elevenlabs", "ElevenLabs Scribe", ProviderCapability.Speech, "elevenlabs", "https://api.elevenlabs.io/v1/", "scribe_v1"),
@@ -72,21 +79,25 @@ public sealed class ProviderSettingsStore(AppDbContext db, IDataProtectionProvid
             Profile("chat-openai", "OpenAI", ProviderCapability.Chat, "openai", "https://api.openai.com/v1/", legacy.ChatModel),
             Profile("chat-foundry", "Azure AI Foundry / OpenAI v1", ProviderCapability.Chat, "azure-foundry", "", "deployment-name"),
             Profile("chat-n8n", "n8n LLM akışı", ProviderCapability.Chat, "n8n", "", "chat-workflow-v1"),
+            Profile("chat-ollama", "Yerel Ollama LLM", ProviderCapability.Chat, "ollama", "http://127.0.0.1:11434/", "qwen2.5:14b-instruct"),
             Profile("embedding-openrouter", "OpenRouter embeddings", ProviderCapability.Embedding, "openrouter", "https://openrouter.ai/api/v1/", "openai/text-embedding-3-small"),
             Profile("embedding-openai", "OpenAI embeddings", ProviderCapability.Embedding, "openai", "https://api.openai.com/v1/", legacy.EmbeddingModel),
             Profile("embedding-foundry", "Azure AI Foundry embeddings", ProviderCapability.Embedding, "azure-foundry", "", "embedding-deployment"),
-            Profile("embedding-n8n", "n8n embedding akışı", ProviderCapability.Embedding, "n8n", "", "embedding-workflow-v1")
+            Profile("embedding-n8n", "n8n embedding akışı", ProviderCapability.Embedding, "n8n", "", "embedding-workflow-v1"),
+            Profile("embedding-ollama", "Yerel Ollama embedding", ProviderCapability.Embedding, "ollama", "http://127.0.0.1:11434/", "nomic-embed-text:latest", 768)
         };
         // Environment/proxy bindings must remain runtime references, not copied into the database.
-        db.ProviderProfiles.AddRange(profiles);
+        var existing = await db.ProviderProfiles.Select(p => p.Id).ToListAsync(ct);
+        db.ProviderProfiles.AddRange(profiles.Where(p => !existing.Contains(p.Id, StringComparer.Ordinal)));
+        if (await db.ProviderSelections.AnyAsync(ct)) { await db.SaveChangesAsync(ct); return; }
         var enabled = !string.IsNullOrWhiteSpace(legacy.ApiKey);
         db.ProviderSelections.Add(new() { Speech = !string.IsNullOrWhiteSpace(credentials.Value.ElevenLabs) ? "speech-elevenlabs" : enabled ? "speech-openai" : null,
             Chat = !string.IsNullOrWhiteSpace(credentials.Value.OpenRouter) ? "chat-openrouter" : enabled ? "chat-openai" : null,
             Embedding = !string.IsNullOrWhiteSpace(credentials.Value.OpenRouter) ? "embedding-openrouter" : enabled ? "embedding-openai" : null, UpdatedAt = clock.GetUtcNow() });
         await db.SaveChangesAsync(ct);
     }
-    private static ProviderProfileEntity Profile(string id, string name, ProviderCapability capability, string kind, string endpoint, string model) =>
-        new() { Id = id, Name = name, Capability = capability, Kind = kind, Endpoint = endpoint, Model = model };
+    private static ProviderProfileEntity Profile(string id, string name, ProviderCapability capability, string kind, string endpoint, string model, int dimensions = 512) =>
+        new() { Id = id, Name = name, Capability = capability, Kind = kind, Endpoint = endpoint, Model = model, Dimensions = dimensions };
     public async Task<ProviderAdminView> ReadAsync(CancellationToken ct)
     {
         var profiles = await db.ProviderProfiles.AsNoTracking().OrderBy(p => p.Capability).ThenBy(p => p.Name).ToListAsync(ct);
@@ -151,6 +162,7 @@ public sealed class ProviderSettingsStore(AppDbContext db, IDataProtectionProvid
     internal ProviderConnection Connection(ProviderProfileEntity profile)
     {
         endpoints.Validate(profile.Endpoint, profile.Kind);
+        if (profile.Kind == "ollama") return new(profile.Id, profile.Kind, profile.Endpoint, profile.Model, profile.Dimensions, "");
         if (profile.ProtectedSecret is null)
         {
             var secret = EnvironmentSecret(profile);

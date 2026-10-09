@@ -6,8 +6,16 @@ namespace VideoAtlas.Web;
 public static class ProviderProvisioning
 {
     // Operator-only CLI, never an HTTP endpoint. Import secrets from protected stdin.
-    public static async Task RunAsync(IServiceProvider services)
+    public static async Task RunAsync(IServiceProvider services, bool useOllama = false)
     {
+        if (useOllama)
+        {
+            var local = services.GetRequiredService<IProviderAdministration>();
+            var localState = await local.ReadAsync(CancellationToken.None);
+            await local.SelectAsync(new(null, "chat-ollama", "embedding-ollama", localState.Selection.Version), "operator-cli", CancellationToken.None);
+            Console.WriteLine("Local Ollama chat and embedding providers selected.");
+            return;
+        }
         var input = await Console.In.ReadToEndAsync();
         if (input.Length > 20000) throw new InvalidOperationException("Provider input exceeds limit.");
         var admin = services.GetRequiredService<IProviderAdministration>();

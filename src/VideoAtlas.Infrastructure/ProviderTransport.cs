@@ -15,7 +15,7 @@ public sealed class ProviderTransport(IHttpClientFactory clients, ProviderEndpoi
         if (connection.Kind == "elevenlabs") request.Headers.Add("xi-api-key", connection.Secret);
         else if (connection.Kind == "azure-speech") request.Headers.Add("Ocp-Apim-Subscription-Key", connection.Secret);
         else if (connection.Kind == "azure-foundry") request.Headers.Add("api-key", connection.Secret);
-        else request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", connection.Secret);
+        else if (connection.Kind != "ollama") request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", connection.Secret);
         request.Headers.Add("X-Correlation-Id", System.Diagnostics.Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString("N"));
         using var client = clients.CreateClient("AiProviders");
         // Buffering enforces MaxResponseContentBufferSize. Never retry paid POSTs or follow redirects.
