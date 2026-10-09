@@ -75,6 +75,12 @@ public sealed partial class Video
         TranscriptIssues = TranscriptIssues.Select(i => i.Id == id ? i with { Status = "dismissed" } : i).ToList();
         ReviewVersion++;
     }
+    public void UpdateChapter(int index, Chapter chapter)
+    {
+        if (index < 0 || index >= Chapters.Count) throw new InvalidOperationException("Chapter does not exist.");
+        Chapters[index] = chapter;
+        ReviewVersion++;
+    }
 
     public bool IsBusy => Status is VideoStatus.Queued or VideoStatus.Processing;
     public void Begin() { Status = VideoStatus.Processing; ErrorCode = null; Report("Video hazırlanıyor", 5); }

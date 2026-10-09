@@ -9,6 +9,7 @@ public sealed record ReviewState(int Version, VideoContext Context, IReadOnlyLis
 public sealed record RevisionInfo(int Number, DateTimeOffset CreatedAt, string Reason);
 public sealed record ContextCommand(int Version, IReadOnlyList<VideoTerm> Terms, string Instructions);
 public sealed record EditTranscriptCommand(int Version, int SegmentId, string Text, bool AudioVerified, double? Start = null, double? End = null);
+public sealed record EditChapterCommand(int Version, int ChapterIndex, string Title, string Summary, string Category, double Start, double End);
 public sealed record ReviewCommand(int Version);
 public interface ITranscriptReviewer
 {
@@ -111,6 +112,20 @@ public sealed class TranscriptReviewService(IVideoStore store, MutationGate gate
             v.RecordTranscript(segments, clock.GetUtcNow(), "Ses doğrulamalı kullanıcı düzeltmesi");
             v.SetIssues(unaffected.Concat(TranscriptQuality.Detect(v.Segments, v.Context).Where(i => i.SegmentId == command.SegmentId)));
             v.Requeue();
+        }, ct);
+
+    public Task EditChapterAsync(Guid id, string owner, EditChapterCommand command, CancellationToken ct) =>
+        MutateAsync(id, owner, command.Version, v =>
+        {
+            if (command.ChapterIndex < 0 || command.ChapterIndex >= v.Chapters.Count) throw VideoAccess.Missing();
+            if (string.IsNullOrWhiteSpace(command.Title) || command.Title.Length > 240 || command.Summary?.Length > 4000 ||
+                string.IsNullOrWhiteSpace(command.Category) || command.Category.Length > 120 || !double.IsFinite(command.Start) ||
+                !double.IsFinite(command.End) || command.Start < 0 || command.End <= command.Start || command.End > v.Duration + 1)
+                throw new AppException(400, "invalid_chapter", "Başlık, kategori ve zaman aralığını kontrol edin.");
+            var fields = new[] { command.Title, command.Summary ?? "", command.Category };
+            if (fields.Any(value => value.Any(char.IsControl)))
+                throw new AppException(400, "invalid_chapter", "Konu başlığında desteklenmeyen kontrol karakterleri var.");
+            v.UpdateChapter(command.ChapterIndex, new Chapter(command.Title.Trim(), command.Summary?.Trim() ?? "", command.Category.Trim(), command.Start, command.End));
         }, ct);
 
     public Task DismissAsync(Guid id, string owner, Guid issueId, int version, CancellationToken ct) =>

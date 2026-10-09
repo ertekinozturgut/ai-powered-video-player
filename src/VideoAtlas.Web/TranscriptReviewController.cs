@@ -27,6 +27,9 @@ public sealed class TranscriptReviewController(VideoAccess access, TranscriptRev
     [HttpPost("edit")]
     public async Task<IActionResult> Edit(Guid id, EditTranscriptCommand command, CancellationToken ct)
     { await review.EditAsync(id, Owner, command, ct); return NoContent(); }
+    [HttpPost("chapters/edit")]
+    public async Task<IActionResult> EditChapter(Guid id, EditChapterCommand command, CancellationToken ct)
+    { await review.EditChapterAsync(id, Owner, command, ct); return NoContent(); }
     [HttpPost("segments/{segmentId:int}/compare"), EnableRateLimiting("review")]
     public async Task<IActionResult> Compare(Guid id, int segmentId, ReviewCommand command, CancellationToken ct)
     { await review.ProposeAsync(id, Owner, segmentId, command.Version, true, ct, secondary: true); return NoContent(); }

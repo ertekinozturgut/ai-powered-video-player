@@ -6,7 +6,7 @@ public sealed record VideoSummary(Guid Id, string Title, DateTimeOffset CreatedA
     string Stage, int Progress, double Duration, bool MediaReady, string? ErrorCode);
 public sealed record VideoDetail(VideoSummary Video, IReadOnlyList<TranscriptSegment> Segments,
     IReadOnlyList<Chapter> Chapters, string AnalysisMode, bool Shared, DateTimeOffset? ShareExpiresAt, string IndexStatus = "none", bool AiConfigured = false,
-    int TranscriptVersion = 0, IReadOnlyList<int>? UncertainSegmentIds = null, SharePresentation? Presentation = null);
+    int TranscriptVersion = 0, IReadOnlyList<int>? UncertainSegmentIds = null, SharePresentation? Presentation = null, int ReviewVersion = 0);
 public sealed record Citation(int SegmentId, double Start, double End, string Text);
 public sealed record ChatTurn(string Role, string Content);
 public sealed record ChatRequest(string Question, IReadOnlyList<ChatTurn>? History = null, string Action = "question", double? Start = null, double? End = null);
@@ -66,5 +66,5 @@ public static class VideoMapping
         v.Stage, v.Progress, v.Duration, v.MediaReady, v.ErrorCode);
     public static VideoDetail Detail(Video v, DateTimeOffset now) => new(Summary(v), v.Segments,
         v.Chapters, v.AnalysisMode, v.CanShare(now), v.ShareExpiresAt, TranscriptVersion: v.TranscriptVersion,
-        UncertainSegmentIds: v.TranscriptIssues.Where(i => i.Status == "pending").Select(i => i.SegmentId).Distinct().ToArray());
+        UncertainSegmentIds: v.TranscriptIssues.Where(i => i.Status == "pending").Select(i => i.SegmentId).Distinct().ToArray(), ReviewVersion: v.ReviewVersion);
 }

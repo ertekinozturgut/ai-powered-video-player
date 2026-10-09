@@ -59,6 +59,18 @@ public sealed class TranscriptQualityTests
         for (var i = 0; i < 15; i++) v.RecordTranscript([new(0, 0, 3, $"Düzenleme {i}")], TimeProvider.System.GetUtcNow(), "Test");
         Assert.Equal(10, v.TranscriptHistory.Count); Assert.Equal(raw, v.OriginalSegments);
     }
+    [Fact] public async Task ChapterCorrectionPersistsWithoutInvalidatingTranscriptIndex()
+    {
+        var store = new MemoryStore(); using var gate = new MutationGate();
+        var review = new TranscriptReviewService(store, gate, new StubReviewer(), TimeProvider.System);
+        var v = store.Video; v.Complete(v.Segments, [new("Eski başlık", "Eski özet", "Teknoloji", 0, 3)], "ai");
+        v.SetIndex([new([0], [1f])], "test-model");
+        await review.EditChapterAsync(v.Id, "owner", new(v.ReviewVersion, 0, "Yeni başlık", "Yeni özet", "Strateji", 0.5, 2.5), default);
+        var chapter = Assert.Single(v.Chapters);
+        Assert.Equal(("Yeni başlık", "Yeni özet", "Strateji", .5, 2.5), (chapter.Title, chapter.Summary, chapter.Category, chapter.Start, chapter.End));
+        Assert.NotEmpty(v.Vectors); Assert.Equal("test-model", v.EmbeddingModel); Assert.Equal(VideoStatus.Ready, v.Status);
+        await Assert.ThrowsAsync<AppException>(() => review.EditChapterAsync(v.Id, "owner", new(v.ReviewVersion, 0, "", "", "", 2, 1), default));
+    }
     [Fact] public async Task PaidSuggestionIsNotAppliedAndStaleResultIsRejectedWithoutHoldingGlobalGate()
     {
         var store = new MemoryStore(); using var gate = new MutationGate(); var reviewer = new StubReviewer { Wait = true };

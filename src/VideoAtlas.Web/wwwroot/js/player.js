@@ -7,6 +7,7 @@ const video = $('#video');
 let detail, ready = false, history = [], asking = false, timer, activeId = -1, sourceSet = false;
 const review = embedded ? null : setupReview(base, () => detail, async () => { clearTimeout(timer); await load(); });
 const operations = embedded ? null : setupOperations(base, async () => { clearTimeout(timer); await load(); });
+const quickEdit = embedded ? null : $('#quick-edit-dialog');
 async function load(rethrow = false) {
   try {
     const next = await api(base);
@@ -75,10 +76,12 @@ function renderTranscript() {
   const list = $('#transcript-list'); list.replaceChildren();
   const query = $('#transcript-search').value.toLocaleLowerCase('tr');
   for (const segment of detail.segments.filter(s => s.text.toLocaleLowerCase('tr').includes(query))) {
-    const row = element('button', 'transcript-row'); row.type = 'button'; row.dataset.id = segment.id;
-    row.append(element('span', 'timestamp', time(segment.start)), element('span', 'segment-text', segment.text));
+    const row = element('div', 'transcript-row'); row.dataset.id = segment.id;
+    const seekButton = element('button', 'transcript-seek'); seekButton.type = 'button'; seekButton.title = 'Bu anda videoya git';
+    seekButton.append(element('span', 'timestamp', time(segment.start)), element('span', 'segment-text', segment.text));
+    seekButton.addEventListener('click', () => seek(segment.start)); row.append(seekButton);
     if (detail.uncertainSegmentIds?.includes(segment.id)) row.append(element('span', 'review-badge', 'İnceleme gerekli'));
-    row.addEventListener('click', () => seek(segment.start)); list.append(row);
+    if (!embedded) row.append(editButton('Metni ve zamanı düzenle', () => openTranscriptEdit(segment))); list.append(row);
   }
   if (!list.children.length) list.append(element('p', 'panel-empty', ready ? 'Bu sözcüklerle eşleşen konuşma yok.' : 'Metin dökümü hazır olduğunda burada görünecek.'));
   activeId = -1; highlight();
@@ -90,13 +93,27 @@ function renderChapters() {
   filter.value = selected;
   const list = $('#chapters-list'); list.replaceChildren();
   detail.chapters.filter(c => !filter.value || c.category === filter.value).forEach((chapter, index) => {
-    const row = element('button', 'chapter-card');
+    const row = element('div', 'chapter-card');
     const number = element('span', 'chapter-number', String(index + 1).padStart(2, '0'));
     const body = element('span', 'chapter-body');
     body.append(element('span', 'chapter-category', chapter.category), element('strong', '', chapter.title), element('span', 'muted', chapter.summary), element('span', 'timestamp', `${time(chapter.start)} — ${time(chapter.end)}`));
-    row.append(number, body); row.addEventListener('click', () => seek(chapter.start)); list.append(row);
+    const seekButton = element('button', 'chapter-seek'); seekButton.type = 'button'; seekButton.title = 'Bu anda videoya git'; seekButton.append(number, body); seekButton.addEventListener('click', () => seek(chapter.start)); row.append(seekButton);
+    if (!embedded) row.append(editButton('Konu başlığını ve zamanı düzenle', () => openChapterEdit(chapter, detail.chapters.indexOf(chapter)))); list.append(row);
   });
   if (!list.children.length) list.append(element('p', 'panel-empty', 'Konu başlıkları analiz tamamlanınca burada görünür.'));
+}
+function editButton(label, action) {
+  const button = element('button', 'inline-edit', 'Düzenle'); button.type = 'button'; button.title = label; button.setAttribute('aria-label', label); button.addEventListener('click', action); return button;
+}
+function openTranscriptEdit(segment) {
+  $('#quick-edit-kind').textContent = 'METİN DÖKÜMÜ'; $('#quick-edit-title').textContent = 'Konuşmayı düzelt'; $('#quick-edit-help').textContent = 'Metni veya zaman kodlarını kaydetmeden önce ilgili sesi dinleyerek doğrulayın. Kaydetme, konu başlıklarını ve AI indeksini yeniden hazırlar.';
+  $('#quick-edit-index').value = segment.id; $('#quick-edit-text').value = segment.text; $('#quick-edit-start').value = segment.start; $('#quick-edit-end').value = segment.end; $('#quick-edit-verified').checked = false;
+  $('#quick-edit-chapter-fields').hidden = true; $('label[for="quick-edit-text"]').hidden = false; $('#quick-edit-text').hidden = false; $('#quick-edit-text').required = true; $('#quick-edit-verified-label').hidden = false; $('#quick-edit-verified').required = true; $('#quick-edit-error').textContent = ''; quickEdit.dataset.kind = 'transcript'; quickEdit.showModal();
+}
+function openChapterEdit(chapter, index) {
+  $('#quick-edit-kind').textContent = 'KONU BAŞLIĞI'; $('#quick-edit-title').textContent = 'Konu başlığını düzenle'; $('#quick-edit-help').textContent = 'Başlık, özet, kategori ve zaman aralığını düzenleyin. Bu değişiklik video metnini veya anlamsal indeksi değiştirmez.';
+  $('#quick-edit-index').value = index; $('#quick-edit-title-input').value = chapter.title; $('#quick-edit-category').value = chapter.category; $('#quick-edit-summary').value = chapter.summary; $('#quick-edit-start').value = chapter.start; $('#quick-edit-end').value = chapter.end;
+  $('#quick-edit-chapter-fields').hidden = false; $('label[for="quick-edit-text"]').hidden = true; $('#quick-edit-text').hidden = true; $('#quick-edit-text').required = false; $('#quick-edit-verified-label').hidden = true; $('#quick-edit-verified').required = false; $('#quick-edit-error').textContent = ''; quickEdit.dataset.kind = 'chapter'; quickEdit.showModal();
 }
 function highlight() {
   $('#current-time').textContent = time(video.currentTime);
@@ -163,6 +180,20 @@ document.querySelectorAll('[data-question]').forEach(button => button.addEventLi
 $('#clear-chat').addEventListener('click', () => { if (asking) return; history = []; $('#chat-messages').replaceChildren(element('p', 'panel-empty', 'Sohbet temizlendi. Yeni bir soru sorabilirsiniz.')); });
 if (!embedded) {
   setupSharing(base);
+  $('#quick-edit-form').addEventListener('submit', async event => {
+    event.preventDefault(); if (!detail || !ready) return;
+    const save = $('#quick-edit-save'); save.disabled = true; $('#quick-edit-error').textContent = '';
+    try {
+      const isTranscript = quickEdit.dataset.kind === 'transcript';
+      const body = isTranscript
+        ? {version: detail.reviewVersion, segmentId: Number($('#quick-edit-index').value), text: $('#quick-edit-text').value, audioVerified: $('#quick-edit-verified').checked, start: Number($('#quick-edit-start').value), end: Number($('#quick-edit-end').value)}
+        : {version: detail.reviewVersion, chapterIndex: Number($('#quick-edit-index').value), title: $('#quick-edit-title-input').value, summary: $('#quick-edit-summary').value, category: $('#quick-edit-category').value, start: Number($('#quick-edit-start').value), end: Number($('#quick-edit-end').value)};
+      await api(`${base}/review/${isTranscript ? 'edit' : 'chapters/edit'}`, {method: 'POST', body: JSON.stringify(body)});
+      quickEdit.close(); clearTimeout(timer); await load(true);
+      toast(isTranscript ? 'Metin kaydedildi; konu başlıkları ve AI indeksi yeniden hazırlanıyor.' : 'Konu başlığı kaydedildi.');
+    } catch (error) { $('#quick-edit-error').textContent = error.message; }
+    finally { save.disabled = false; }
+  });
   $('#retry-video').addEventListener('click', async () => {
     $('#retry-video').disabled = true;
     try { await api(`${base}/retry`, {method: 'POST'}); clearTimeout(timer); await load(); }
