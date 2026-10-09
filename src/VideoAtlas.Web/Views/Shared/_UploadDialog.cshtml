@@ -1,0 +1,20 @@
+<dialog id="upload-dialog" class="app-dialog">
+    <div class="dialog-heading"><div><span class="eyebrow">YENİ BİR KEŞİF</span><h2>Video yükle</h2></div><button class="icon-button" data-close aria-label="Kapat">×</button></div>
+    <form id="upload-form" class="stack-form">
+        <label id="drop-zone" class="drop-zone" for="video-file"><span class="empty-icon">↑</span><strong>Videonuzu buraya bırakın</strong><span>veya dosya seçmek için tıklayın</span><small>MP4, MOV, WebM · 512 MiB · 2 saate kadar</small></label>
+        <input id="video-file" name="file" type="file" accept="video/mp4,video/quicktime,video/webm,video/x-matroska" required class="form-control" />
+        <div><label for="video-title">Video başlığı</label><input id="video-title" name="title" class="form-control" maxlength="180" required placeholder="Örn. Ürün stratejisi toplantısı" /></div>
+        <details class="context-fields"><summary>Videoya özel terimler ve analiz yönergeleri (isteğe bağlı)</summary>
+            <label for="upload-terms">Terimler ve açıklamaları</label><textarea id="upload-terms" name="terms" class="form-control" rows="3" maxlength="32000" placeholder="Her satıra: terim | açıklama&#10;ARR | Yıllık yinelenen gelir"></textarea>
+            <small class="muted">En fazla 50 terim. Terim 100, açıklama 500 karakter; her terim ayrı satırda.</small>
+            <label for="upload-instructions">Analiz yönergeleri</label><textarea id="upload-instructions" name="analysisInstructions" class="form-control" rows="3" maxlength="4000" placeholder="Örn. Kararları, sorumluları ve açık kalan soruları öne çıkar."></textarea>
+            <small class="muted">Yönergeler ve sözlük yardımcı bağlamdır; videoda söylenmiş bilgi sayılmaz. Etkin AI sağlayıcısına gönderilir.</small>
+        </details>
+        <label class="check-label"><input name="consent" type="checkbox" value="true" required /><span>Bu videoyu işleme hakkına sahibim. Video/ses/metnin işlenmesini ve etkin STT, dil modeli ve indeksleme sağlayıcılarına aktarılmasını <a href="/privacy" target="_blank" rel="noopener">veri işleme açıklaması</a> kapsamında onaylıyorum.</span></label>
+        <label class="check-label"><input name="fullReview" type="checkbox" value="true" /> Tüm metni AI ile kalite taramasından geçir (ek API ücreti doğurabilir).</label>
+        <div id="upload-error" class="form-error" role="alert"></div>
+        <progress id="upload-progress" max="100" value="0" hidden aria-label="Yükleme ilerlemesi"></progress>
+        <button id="upload-submit" class="btn btn-primary btn-lg" type="submit">Yükle ve işlemeye başla →</button>
+        <small class="muted">Yükleme tamamlanınca analiz arka planda devam eder.</small>
+    </form>
+</dialog>

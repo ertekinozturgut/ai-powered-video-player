@@ -1,0 +1,8 @@
+# Local-only production TLS verification, never published on external interfaces.
+services:
+  app:
+    image: videoatlas:local
+  proxy:
+    ports: !override
+      - "127.0.0.1:5800:80"
+      - "127.0.0.1:5443:443"

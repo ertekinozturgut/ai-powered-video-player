@@ -1,0 +1,12 @@
+{
+    email {$ACME_EMAIL}
+}
+{$DOMAIN} {
+    request_body {
+        max_size 540MB
+    }
+    encode zstd gzip
+    header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    reverse_proxy app:8080
+    # Access logging intentionally disabled: share capabilities are in URL paths.
+}

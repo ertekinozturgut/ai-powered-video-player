@@ -1,0 +1,13 @@
+.git
+**/bin
+**/obj
+**/node_modules
+**/data
+artifacts
+.env
+.env.*
+tests
+.github
+vendor/agent-squad/.agents
+vendor/agent-squad/.codeql
+vendor/agent-squad/tests

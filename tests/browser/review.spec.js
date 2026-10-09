@@ -1,0 +1,102 @@
+import {test, expect} from '@playwright/test';
+import {execFileSync} from 'node:child_process';
+import {mkdtempSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import AxeBuilder from '@axe-core/playwright';
+
+async function accessible(page) {
+  const result = await new AxeBuilder({page}).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(result.violations.map(v => ({rule:v.id, nodes:v.nodes.map(n => n.failureSummary)}))).toEqual([]);
+}
+test('video glossary → quality warning → audio review → approved correction → original restore', async ({page}) => {
+  let releaseReply = () => {};
+  const failures = []; page.on('pageerror', e => failures.push(e.message));
+  await page.goto('/account/register');
+  await page.getByLabel('E-posta adresi').fill(`review-${Date.now()}@example.invalid`);
+  await page.getByLabel('Parola', {exact:true}).fill('Synthetic-Test!234');
+  await page.getByRole('button', {name:'Hesap oluştur'}).click();
+  await expect(page.locator('#library-empty')).toBeVisible();
+  const dir = mkdtempSync(join(tmpdir(), 'videoatlas-review-browser-'));
+  try {
+    const fixture = join(dir, 'review.mp4');
+    execFileSync('ffmpeg', ['-nostdin','-y','-v','error','-f','lavfi','-i','testsrc2=size=640x360:rate=10','-f','lavfi','-i','sine=frequency=440:sample_rate=16000','-t','10','-c:v','libx264','-threads','1','-pix_fmt','yuv420p','-c:a','aac',fixture]);
+    await page.getByRole('button', {name:'＋ Video yükle',exact:true}).click();
+    await page.locator('#video-file').setInputFiles(fixture);
+    await page.getByLabel('Video başlığı').fill('Transkript incelemesi · sentetik test');
+    await page.locator('#upload-dialog summary').click();
+    await page.locator('#upload-terms').fill('VideoAtlas | Bu kayıtta anlatılan ürün');
+    await page.locator('#upload-instructions').fill('Kararları ve riskleri öne çıkar.');
+    await accessible(page);
+    await page.locator('input[name="consent"]').check();
+    await page.getByRole('button', {name:'Yükle ve işlemeye başla'}).click();
+    await expect(page.locator('#video-status')).toHaveText('SRT bekliyor', {timeout:60000});
+    const srt = '1\n00:00:00,000 --> 00:00:03,000\nVideoAtls bugün tanıtılıyor.\n\n2\n00:00:03,000 --> 00:00:06,000\nBütçe yüz bin lira.\n';
+    await page.locator('#srt-file').setInputFiles({name:'review.srt',mimeType:'application/x-subrip',buffer:Buffer.from(srt)});
+    await expect(page.locator('#video-status')).toHaveText('Hazır');
+    await expect(page.locator('.review-badge')).toHaveCount(1);
+    await page.locator('#context-open').click();
+    await expect(page.locator('#context-terms')).toHaveValue('VideoAtlas | Bu kayıtta anlatılan ürün');
+    await page.locator('#context-instructions').fill('Kararları ve riskleri kısa başlıklarla öne çıkar.');
+    await accessible(page);
+    await page.screenshot({path:'artifacts/video-context-desktop.png',fullPage:true});
+    await page.setViewportSize({width:390,height:844});
+    await accessible(page);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+    await page.screenshot({path:'artifacts/video-context-mobile.png',fullPage:true});
+    await page.locator('#context-save').click();
+    await expect(page.locator('#context-dialog')).not.toBeVisible();
+    await expect(page.locator('#video-status')).toHaveText('Hazır',{timeout:30000});
+    await page.setViewportSize({width:1440,height:1050});
+    // Hold an actual server answer until after an edit; never show its stale citations.
+    let capturedReply;
+    const captured = new Promise(resolve => { capturedReply = resolve; });
+    const release = new Promise(resolve => { releaseReply = resolve; });
+    await page.route('**/api/videos/*/chat', async route => {
+      const response = await route.fetch(); capturedReply(); await release; await route.fulfill({response});
+    });
+    await page.locator('#chat-question').fill('VideoAtls?');
+    await page.locator('#chat-submit').click(); await captured;
+    await page.locator('#review-open').click();
+    await page.locator('#review-only-issues').check();
+    await expect(page.locator('#review-segment option')).toHaveCount(1);
+    await expect(page.locator('#review-issues')).toContainText('VideoAtlas');
+    await expect(page.locator('#review-ai')).toBeDisabled(); // Live credentials intentionally absent.
+    await page.locator('#review-listen').click();
+    await expect.poll(() => page.locator('#review-audio').evaluate(a => a.currentTime)).toBeGreaterThan(0);
+    await page.locator('#review-audio').evaluate(a => a.pause());
+    await page.locator('#review-dialog summary').filter({hasText:'İlk ham metni göster'}).click();
+    await expect(page.locator('#review-original')).toContainText('VideoAtls');
+    await accessible(page);
+    await page.screenshot({path:'artifacts/transcript-review-desktop.png',fullPage:true});
+    await page.setViewportSize({width:390,height:844});
+    await accessible(page);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+    await page.screenshot({path:'artifacts/transcript-review-mobile.png',fullPage:true});
+    await page.locator('#review-text').fill('VideoAtlas bugün tanıtılıyor.');
+    await page.locator('#review-verified').check();
+    await page.locator('#review-save').click();
+    await expect(page.locator('#review-dialog')).not.toBeVisible();
+    await expect(page.locator('#video-status')).toHaveText('Hazır',{timeout:30000});
+    await expect(page.locator('.transcript-row').first()).toContainText('VideoAtlas');
+    await expect(page.locator('.review-badge')).toHaveCount(0);
+    await expect(page.locator('#chat-messages')).toContainText('Metin sürümü değişti');
+    releaseReply();
+    await expect(page.locator('#chat-error')).toContainText('metin değişti');
+    await expect(page.locator('.citation')).toHaveCount(0);
+    await page.unroute('**/api/videos/*/chat');
+    const apiBase = await page.locator('#player-app').getAttribute('data-api');
+    const exported = await (await page.request.get(`${apiBase}/subtitles.srt`)).text();
+    expect(exported).toContain('00:00:00,000 --> 00:00:03,000\nVideoAtlas');
+    await page.locator('#review-open').click();
+    await page.locator('.review-history summary').click();
+    await page.locator('#review-revision').selectOption('-1');
+    page.once('dialog', d => d.accept());
+    await page.locator('#review-restore').click();
+    await expect(page.locator('#review-dialog')).not.toBeVisible();
+    await expect(page.locator('#video-status')).toHaveText('Hazır',{timeout:30000});
+    await expect(page.locator('.transcript-row').first()).toContainText('VideoAtls');
+    await expect(page.locator('.review-badge')).toHaveCount(1);
+    expect(failures).toEqual([]);
+  } finally { releaseReply(); rmSync(dir,{recursive:true,force:true}); }
+});

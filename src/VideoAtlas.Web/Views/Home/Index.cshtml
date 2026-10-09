@@ -1,0 +1,15 @@
+@{ ViewData["Title"] = "Video kütüphanesi"; }
+<header class="topbar"><span>Kişisel çalışma alanı <span class="slash">/</span> <strong>Kütüphane</strong></span><span class="security-pill">◇ Özel ve güvenli</span></header>
+<div class="workspace-content">
+    <div class="page-heading"><div><span class="eyebrow">BİLGİNİZ, TEK BİR YERDE</span><h1>Video kütüphanesi<span class="accent-dot">.</span></h1><p class="muted">Konuşmaları keşfedin, sorular sorun, önemli anları paylaşın.</p></div><button class="btn btn-primary" data-open="upload-dialog">＋ Video yükle</button></div>
+    @if (ViewBag.SpeechConfigured != true || ViewBag.AiConfigured != true) { <div class="notice"><span>◇</span><div><strong>Sağlayıcı durumu</strong><p>STT: @(ViewBag.SpeechConfigured == true ? "yapılandırıldı" : "devre dışı; SRT içe aktarın"). Sohbet: @(ViewBag.AiConfigured == true ? "AI yapılandırıldı" : "alıntı arama modu"). Aktif sağlayıcıları yönetici panelinden seçebilirsiniz.</p></div></div> }
+    <section class="intro-banner"><div class="banner-copy"><span class="eyebrow">HER ANIN BİR CEVABI VAR</span><h2>Sadece izlemeyin.<br /><span>Videonuzla konuşun.</span></h2><p>Bir soru sorun. Doğru anı bulun.<br />Konuşmaları, kaynağı belli cevaplara dönüştürün.</p><div class="feature-pills"><span>◷ Zaman kodlu metin</span><span>▤ Konu başlıkları</span><span>✦ Kaynaklı sohbet</span></div></div><div class="banner-art" aria-hidden="true"><div class="banner-orbit"></div><img src="/images/atlas-orb.svg" alt="" width="260" height="260" /><span class="orb-caption"><i></i> Yeni bir bakış açısı</span></div></section>
+    <div class="library-toolbar"><h2>Videolarım <span id="video-count" class="count-badge">0</span></h2><label class="search-box"><span aria-hidden="true">⌕</span><input id="library-search" type="search" placeholder="Bu sayfadaki videolarda ara…" aria-label="Videolarda ara" /></label></div>
+    <div id="library-loading" class="empty-state"><span class="spinner-border" aria-hidden="true"></span><p>Videolarınız yükleniyor…</p></div>
+    <div id="library-error" class="notice error" role="alert" hidden></div>
+    <div id="library-grid" class="video-grid"></div>
+    <div id="library-empty" class="empty-state" hidden><div class="empty-icon">▷</div><h3>İlk keşfiniz bir videoyla başlar</h3><p>Bir toplantı, ders veya söyleşi yükleyin.<br />Konuşmaları bilgiye dönüştürmeye başlayın.</p><button class="btn btn-primary" data-open="upload-dialog">İlk videoyu yükle</button><small>MP4, MOV veya WebM · En fazla 512 MiB / 2 saat</small></div>
+    <div class="pagination-controls"><button id="previous-page" class="btn btn-outline-secondary" disabled>← Önceki</button><span id="page-label">Sayfa 1</span><button id="next-page" class="btn btn-outline-secondary" disabled>Sonraki →</button></div>
+</div>
+<partial name="_UploadDialog" />
+@section Scripts { <script type="module" src="/js/library.js" asp-append-version="true"></script> }

@@ -1,0 +1,48 @@
+@using VideoAtlas.Application
+@model ProviderAdminView
+@{ ViewData["Title"] = "AI sağlayıcı yönetimi"; }
+<header class="topbar"><span>Yönetim <span class="slash">/</span> <strong>AI sağlayıcıları</strong></span><span class="security-pill">Yalnızca yönetici</span></header>
+<div class="workspace-content provider-page">
+    <div class="page-heading"><div><span class="eyebrow">KONTROL SİZDE</span><h1>AI sağlayıcıları<span class="accent-dot">.</span></h1><p class="muted">Ses, dil modeli ve indeksleme için bağımsız sağlayıcı seçin.</p></div></div>
+    @if (TempData["ProviderMessage"] is string message) { <div class="notice" role="status">@message</div> }
+    <div asp-validation-summary="All" class="form-error" role="alert"></div>
+    <section class="provider-panel">
+        <h2>Aktif yönlendirme</h2>
+        <p class="muted">Ayarlar yeni isteklerde geçerli olur. Devam eden video işi başlangıçtaki seçimle tamamlanır. Embedding modeli/boyutu değişirse eski videolarda “Yeniden analiz et” kullanın.</p>
+        <form action="/admin/providers/select" method="post" class="stack-form">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="Version" value="@Model.Selection.Version" />
+            <div class="provider-routes">
+                @foreach (var item in new[] { (ProviderCapability.Speech, "Speech", "01 / Konuşmayı metne çevirme", Model.Selection.Speech), (ProviderCapability.Chat, "Chat", "02 / Sohbet ve konu analizi", Model.Selection.Chat), (ProviderCapability.Embedding, "Embedding", "03 / Embedding indeksi", Model.Selection.Embedding) })
+                {
+                    <div><label for="@item.Item2">@item.Item3</label><select id="@item.Item2" name="@item.Item2" class="form-select">
+                        <option value="">Devre dışı / yerel mod</option>
+                        @foreach (var p in Model.Profiles.Where(p => p.Capability == item.Item1))
+                        { <option value="@p.Id" selected="@(p.Id == item.Item4)">@p.Name @(!p.HasSecret ? "· anahtar eksik" : "")</option> }
+                    </select></div>
+                }
+            </div>
+            <div><label for="SecondarySpeech">04 / İsteğe bağlı ikinci STT (karşılaştırma)</label><select id="SecondarySpeech" name="SecondarySpeech" class="form-select">
+                <option value="">Devre dışı</option>
+                @foreach (var p in Model.Profiles.Where(p => p.Capability == ProviderCapability.Speech))
+                { <option value="@p.Id" selected="@(p.Id == Model.Selection.SecondarySpeech)">@p.Name @(!p.HasSecret ? "· anahtar eksik" : "")</option> }
+            </select><small class="muted">Yalnızca kullanıcı karşılaştırma istediğinde çağrılır; ayrı ücret oluşabilir.</small></div>
+            <div><button class="btn btn-primary" type="submit">Aktif sağlayıcıları kaydet</button></div>
+        </form>
+        <small class="muted">Son değişiklik: @Model.Selection.UpdatedAt.ToString("u") · @Model.Selection.UpdatedBy</small>
+    </section>
+    <div class="notice"><span aria-hidden="true">◇</span><div><strong>Anahtar kayıtlı ≠ bağlantı doğrulandı</strong><p>Kaydedilen sağlayıcılar otomatik olarak ücretli test çağrısı yapmaz. Model erişimi, kota ve ağ izinleri ilk gerçek işlemde doğrulanır. Hata halinde başka sağlayıcıya sessiz geçiş yapılmaz.</p></div></div>
+    <h2>Sağlayıcı yapılandırmaları</h2>
+    <div class="provider-cards">
+        @foreach (var profile in Model.Profiles)
+        {
+            <article class="provider-panel provider-card">
+                <span class="eyebrow">@(profile.Capability switch { ProviderCapability.Speech => "KONUŞMA / STT", ProviderCapability.Chat => "DİL MODELİ / LLM", _ => "ANLAMSAL İNDEKS" })</span>
+                <h3>@profile.Name</h3><p class="muted provider-model">@profile.Model</p>
+                <span class="status-badge @(profile.HasSecret ? "status-ready" : "status-awaitingtranscript")">@(profile.HasSecret ? "Anahtar kayıtlı" : "Yapılandırma gerekli")</span>
+                <a class="btn btn-outline-secondary" href="/admin/providers/@profile.Id" aria-label="@profile.Name ayarlarını düzenle">Ayarları düzenle →</a>
+            </article>
+        }
+    </div>
+    <section class="provider-panel"><h2>Güvenilir uç noktalar</h2><p class="muted">İzinli host listesi yalnızca sunucu işletmecisi tarafından değiştirilebilir. Azure veya n8n eklemeden önce gerçek host adresini <code>ProviderSecurity:AllowedHosts</code> listesine ekleyin. Yönlendirmeler takip edilmez.</p><p class="provider-hosts">@string.Join(" · ", Model.AllowedHosts)</p></section>
+</div>

@@ -1,0 +1,58 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      Ai__ApiKey: ${AI_API_KEY:-}
+      Ai__ChatModel: ${AI_CHAT_MODEL:-gpt-4o-mini}
+      ProviderCredentials__OpenRouter: ${OPENROUTER_API_KEY:-}
+      ProviderCredentials__ElevenLabs: ${ELEVENLABS_API_KEY:-}
+      Accounts__AllowRegistration: "false"
+      ReverseProxy__KnownAddress: "172.30.0.3"
+      AllowedHosts: "${DOMAIN:-localhost};localhost;127.0.0.1"
+    volumes:
+      - video_data:/data
+    expose:
+      - "8080"
+    read_only: true
+    tmpfs:
+      - /tmp:size=1536m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 3g
+    cpus: 2
+    pids_limit: 256
+    networks:
+      application:
+  proxy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env to your public hostname}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in .env}
+      NO_PROXY: "app,localhost,127.0.0.1"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      application:
+        ipv4_address: 172.30.0.3
+networks:
+  application:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+volumes:
+  video_data:
+  caddy_data:
+  caddy_config:

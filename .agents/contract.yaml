@@ -1,0 +1,21 @@
+version: 2
+source: vendor/agent-squad/.agents/contract.yaml
+layers:
+  domain: { paths: ["src/VideoAtlas.Domain/**"], may_depend_on: [] }
+  application: { paths: ["src/VideoAtlas.Application/**"], may_depend_on: [domain] }
+  infrastructure: { paths: ["src/VideoAtlas.Infrastructure/**"], may_depend_on: [domain, application] }
+  web: { paths: ["src/VideoAtlas.Web/**"], may_depend_on: [application, domain] }
+composition_root_exception: src/VideoAtlas.Web/Program.cs
+infrastructure_adapters: [AccountController, AccountProvisioning, ApiExceptionHandler]
+pii:
+  fields: [Email, Title, Text, Content, Question]
+  marker_attribute: VideoAtlas.Domain.SensitiveDataAttribute
+observability:
+  health_endpoints: [/health/live, /health/ready]
+  no_transcript_or_token_logging: true
+runtime:
+  deployment: single_instance
+  max_upload_bytes: 536870912
+  max_duration_seconds: 7200
+  max_output_bytes: 1073741824
+  per_video_daily_questions: 200

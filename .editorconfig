@@ -1,0 +1,14 @@
+root = true
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+[*.cs]
+dotnet_diagnostic.RS0030.severity = error
+dotnet_diagnostic.CS4014.severity = error
+dotnet_diagnostic.CA5350.severity = error
+dotnet_diagnostic.CA5351.severity = error
+[*.{json,js,css,yaml,yml}]
+indent_size = 2

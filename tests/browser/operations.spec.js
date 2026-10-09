@@ -1,0 +1,56 @@
+import {test, expect} from '@playwright/test';
+import {execFileSync} from 'node:child_process';
+import {mkdtempSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import AxeBuilder from '@axe-core/playwright';
+
+test('usage, explicit retention, timestamp correction and restricted embed presentation', async ({page, browser}) => {
+  const failures = []; page.on('pageerror', e => failures.push(e.message));
+  const email = `operations-${Date.now()}@example.invalid`;
+  await page.goto('/account/register'); await page.getByLabel('E-posta adresi').fill(email);
+  await page.getByLabel('Parola',{exact:true}).fill('Synthetic-Test!234'); await page.getByRole('button',{name:'Hesap oluştur'}).click();
+  const dir = mkdtempSync(join(tmpdir(),'videoatlas-operations-'));
+  try {
+    const file = join(dir,'synthetic.mp4');
+    execFileSync('ffmpeg',['-nostdin','-y','-v','error','-f','lavfi','-i','color=size=320x180:rate=5','-t','10','-c:v','libx264','-threads','1',file]);
+    await page.getByRole('button',{name:'＋ Video yükle',exact:true}).click();
+    await page.locator('#video-file').setInputFiles(file); await page.locator('#video-title').fill('İşlem ve paylaşım testi');
+    await page.locator('input[name="consent"]').check(); await page.locator('#upload-submit').click();
+    await expect(page.locator('#video-status')).toHaveText('SRT bekliyor',{timeout:60000});
+    await page.locator('#srt-file').setInputFiles({name:'test.srt',mimeType:'application/x-subrip',buffer:Buffer.from('1\n00:00:00,000 --> 00:00:03,000\nBütçe yüz bin lira.\n\n2\n00:00:04,000 --> 00:00:08,000\nTestler yarın bitecek.\n')});
+    await expect(page.locator('#video-status')).toHaveText('Hazır');
+    await page.locator('.operations-panel summary').click();
+    await expect(page.locator('#operations-summary')).toContainText('0 API çağrısı');
+    await expect(page.locator('#operations-summary')).not.toContainText('undefined');
+    await expect(page.locator('#cancel-job')).toBeDisabled();
+    await page.locator('#retention-days').fill('30'); await page.locator('#retention-save').click();
+    await expect(page.locator('#operations-error')).toContainText('açık onay');
+    await page.locator('#retention-confirm').check(); await page.locator('#retention-save').click();
+    await expect(page.locator('#retention-current')).toContainText('Otomatik silme:');
+    await page.locator('#retention-days').fill('0'); await page.locator('#retention-save').click();
+    await expect(page.locator('#retention-current')).toContainText('süresiz');
+    await page.screenshot({path:'artifacts/operations-desktop.png',fullPage:true});
+    await page.locator('#review-open').click(); await page.locator('#review-edit-timing').check();
+    await page.locator('#review-start').fill('0.5'); await page.locator('#review-end').fill('2.5');
+    await page.locator('#review-verified').check(); await page.locator('#review-save').click();
+    await expect(page.locator('#review-dialog')).not.toBeVisible();
+    await expect(page.locator('#video-status')).toHaveText('Hazır',{timeout:30000});
+    const base = await page.locator('#player-app').getAttribute('data-api');
+    expect(await (await page.request.get(`${base}/subtitles.srt`)).text()).toContain('00:00:00,500 --> 00:00:02,500');
+    await page.locator('#share-open').click(); await page.locator('#share-theme').selectOption('minimal');
+    await page.locator('#share-start').fill('2'); await page.locator('#share-transcript').uncheck(); await page.locator('#share-chat').uncheck();
+    const axe = await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa']).analyze(); expect(axe.violations).toEqual([]);
+    await page.locator('#create-share').click(); await expect(page.locator('#share-result')).toBeVisible();
+    const url = await page.locator('#share-url').inputValue();
+    const anonymous = await browser.newContext(); const embed = await anonymous.newPage();
+    await embed.goto(url); await expect(embed.locator('#video-status')).toHaveText('Hazır');
+    await expect(embed.locator('.chat-panel')).not.toBeVisible(); await expect(embed.locator('#srt-download')).not.toBeVisible();
+    await expect(embed.locator('#tab-transcript')).not.toBeVisible(); await expect(embed.locator('#chapters-panel')).toBeVisible();
+    await expect.poll(()=>embed.locator('#video').evaluate(v=>v.currentTime)).toBeGreaterThanOrEqual(1.9);
+    await embed.screenshot({path:'artifacts/embed-minimal.png',fullPage:true}); await anonymous.close();
+    await page.locator('#share-private').check(); await page.locator('#share-viewers').fill(email); await page.locator('#create-share').click();
+    await expect(page.locator('#copy-embed')).not.toBeVisible(); await expect(page.locator('#iframe-code')).toHaveValue(/gömme kapalıdır/);
+    await page.screenshot({path:'artifacts/share-options.png',fullPage:true}); expect(failures).toEqual([]);
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+});

@@ -1,0 +1,7 @@
+[
+  {"id":"VA-01","title":"Mimari, Agent Squad uyarlaması ve altyapı","status":"completed","dorMet":true,"dodMet":true,"artifacts":{"spec":"docs/PLAN.md","architecture":".agents/contract.yaml","tests":"tests/VideoAtlas.Tests/ArchitectureTests.cs"}},
+  {"id":"VA-02","title":"Video işleme, SRT ve zaman kodlu oynatma","status":"completed","dorMet":true,"dodMet":true,"artifacts":{"tests":"tests/VideoAtlas.Tests/WebTests.cs"}},
+  {"id":"VA-03","title":"AI transkripsiyon, konu analizi, anlamsal arama ve kaynaklı sohbet","status":"in_review","dorMet":true,"dodMet":false,"artifacts":{"tests":"tests/VideoAtlas.Tests/AiPipelineTests.cs","liveProvider":"pending_credentials"}},
+  {"id":"VA-04","title":"Paylaşım, iframe ve kullanıcı izolasyonu","status":"completed","dorMet":true,"dodMet":true,"artifacts":{"tests":"tests/browser/workflow.spec.js"}},
+  {"id":"VA-05","title":"Dağıtım doğrulaması ve teslim","status":"in_review","dorMet":true,"dodMet":false,"artifacts":{"evidence":"docs/VALIDATION.md","runbook":"docs/OPERATIONS.md","localBuildAndDeployment":"passed","publicDeployment":"pending_domain_host_and_live_ai_credentials"}}
+]

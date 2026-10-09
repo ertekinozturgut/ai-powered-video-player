@@ -1,0 +1,12 @@
+@model AccountForm
+@{ ViewData["Title"] = "Hesap oluştur"; }
+<section class="auth-page">
+    <partial name="_AuthStory" />
+    <div class="auth-card"><span class="auth-emblem" aria-hidden="true">✦</span><span class="eyebrow">BİR KEŞİFLE BAŞLAR</span><h2>Bilginize yeni<br />bir alan açın.</h2><p class="muted">Videolarınız paylaşımı açana kadar size özeldir.</p>
+    <form asp-action="Register" method="post" class="stack-form">
+        <div asp-validation-summary="ModelOnly" class="form-error" role="alert"></div>
+        <div><label asp-for="Email">E-posta adresi</label><input asp-for="Email" class="form-control" autocomplete="username" /><span asp-validation-for="Email" class="form-error"></span></div>
+        <div><label asp-for="Password">Parola</label><input asp-for="Password" class="form-control" autocomplete="new-password" /><small class="muted">En az 12 karakter; büyük/küçük harf, rakam ve sembol.</small><span asp-validation-for="Password" class="form-error"></span></div>
+        <button class="btn btn-primary btn-lg" type="submit">Hesap oluştur →</button>
+    </form><p class="auth-foot">Hesabınız var mı? <a href="/account/login">Giriş yapın</a></p><a href="/privacy" class="muted small">Gizlilik ve veri işleme</a></div>
+</section>

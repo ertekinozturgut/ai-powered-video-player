@@ -1,0 +1,16 @@
+{
+  "name": "videoatlas-ui",
+  "private": true,
+  "scripts": {
+    "test:metrics": "node --test tests/evaluate-transcript.test.mjs",
+    "test:e2e": "playwright test",
+    "assets": "node scripts/assets.mjs"
+  },
+  "dependencies": {
+    "bootstrap": "5.3.8"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.11.0",
+    "@playwright/test": "1.58.2"
+  }
+}

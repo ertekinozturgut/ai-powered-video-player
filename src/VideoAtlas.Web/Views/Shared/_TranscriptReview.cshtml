@@ -1,0 +1,34 @@
+<dialog id="context-dialog" class="app-dialog" aria-labelledby="context-title">
+    <div class="dialog-heading"><h2 id="context-title">Video bağlamı ve yönergeler</h2><button type="button" class="icon-button" data-close aria-label="Kapat">×</button></div>
+    <p class="muted">Sözlük ve yönergeler AI analizini yönlendirir; videoda söylenmiş bilgi yerine geçmez. Kaydetmek mevcut metni değiştirmez, konu ve indeks analizini yeniden başlatır.</p>
+    <form id="context-form" class="stack-form">
+        <label for="context-terms">Terimler ve açıklamaları</label><textarea id="context-terms" class="form-control" rows="6" maxlength="32000" placeholder="Her satıra: terim | açıklama&#10;ARR | Yıllık yinelenen gelir"></textarea>
+        <small class="muted">En fazla 50 terim. Terim 100, açıklama 500 karakter. Açıklama aynı satırda olmalı.</small>
+        <label for="context-instructions">Analiz yönergeleri</label><textarea id="context-instructions" class="form-control" rows="4" maxlength="4000" placeholder="Örn. Riskleri ve aksiyonları ayrı konular halinde öne çıkar."></textarea>
+        <small class="muted">Etkin AI sağlayıcısına aktarılır. Bu alanlar iframe ziyaretçilerine doğrudan gösterilmez; hassas veya gizli bilgi girmeyin, AI çıktısını etkileyebilir.</small>
+        <div id="context-error" class="form-error" role="alert"></div><button id="context-save" class="btn btn-primary" type="submit">Bağlamı kaydet ve yeniden analiz et</button>
+    </form>
+</dialog>
+<dialog id="review-dialog" class="app-dialog review-dialog" aria-labelledby="review-title">
+    <div class="dialog-heading"><div><span class="eyebrow">KAYNAĞI SESLE DOĞRULAYIN</span><h2 id="review-title">Transkript kalite kontrolü</h2></div><button type="button" class="icon-button" data-close aria-label="Kapat">×</button></div>
+    <p class="muted">Uyarılar hata kanıtı veya STT güven puanı değildir. AI önerileri otomatik uygulanmaz. Zaman kodları yalnızca açık onayla değiştirilir; ham metin ve son 10 sürüm saklanır.</p>
+    <div id="review-status" role="status" class="muted"></div>
+    <div class="review-actions"><button id="review-check" type="button" class="btn btn-outline-secondary">Uyarıları yeniden tara</button><label class="check-label"><input id="review-only-issues" type="checkbox" /> Yalnızca inceleme gerekenler</label></div>
+    <label for="review-segment">İncelenecek konuşma</label><select id="review-segment" class="form-select"></select>
+    <div class="review-actions"><button id="review-listen" type="button" class="btn btn-outline-secondary">▷ Bölümü dinle</button><button id="review-ai" type="button" class="btn btn-outline-secondary">AI ile metni incele</button><button id="review-stt" type="button" class="btn btn-outline-secondary">Ses parçasını yeniden çözümle</button></div>
+    <div class="review-actions"><button id="review-compare" type="button" class="btn btn-outline-secondary">İkinci STT ile karşılaştır</button><button id="review-align" type="button" class="btn btn-outline-secondary">Ses/metin zamanlarını hizala</button></div>
+    <small class="muted">İkinci STT yönetici panelinde seçilir. Hizalama şu an ElevenLabs adaptöründe desteklenir; ücretli olabilir ve doğru metni garanti etmez.</small>
+    <audio id="review-audio" controls preload="none" aria-label="İncelenen bölümün sesi"></audio>
+    <small class="muted">AI incelemesi metin/komşu bağlam kontrolüdür. Yeniden çözümleme aktif STT'ye yalnızca ilgili ses aralığını gönderir. Bu iki işlem ücretli API kullanabilir; otomatik tekrarlanmaz.</small>
+    <div id="review-issues" class="review-issues"></div>
+    <details><summary>İlk ham metni göster</summary><p id="review-original" class="review-original"></p></details>
+    <form id="review-edit-form" class="stack-form">
+        <label for="review-text">İncelenen / düzenlenen metin</label><textarea id="review-text" class="form-control" rows="4" maxlength="16000" required></textarea>
+        <label class="check-label"><input id="review-edit-timing" type="checkbox" /> Zaman aralığını da düzelt</label>
+        <div class="review-actions"><label>Başlangıç (saniye)<input id="review-start" type="number" min="0" step="0.001" class="form-control" /></label><label>Bitiş (saniye)<input id="review-end" type="number" min="0" step="0.001" class="form-control" /></label></div>
+        <label class="check-label"><input id="review-verified" type="checkbox" required /> Sesi dinledim; bu metnin ilgili zaman aralığında söylendiğini doğruladım.</label>
+        <button id="review-save" class="btn btn-primary" type="submit">Düzeltmeyi onayla ve yeniden analiz et</button>
+    </form>
+    <div id="review-error" class="form-error" role="alert"></div>
+    <details class="review-history"><summary>Önceki metin sürümüne dön</summary><label for="review-revision">Geri yüklenecek sürüm</label><select id="review-revision" class="form-select"></select><button id="review-restore" type="button" class="btn btn-outline-secondary">Seçili sürümü geri yükle</button><small class="muted">Geri yükleme yeni bir sürüm oluşturur ve analizi yeniler. Paylaşılan video da yeni metni kullanır.</small></details>
+</dialog>

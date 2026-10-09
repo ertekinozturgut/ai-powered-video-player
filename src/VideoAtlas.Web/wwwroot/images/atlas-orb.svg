@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="420" viewBox="0 0 420 420" fill="none">
+  <defs>
+    <radialGradient id="halo"><stop stop-color="#4056ef" stop-opacity=".5"/><stop offset="1" stop-color="#152543" stop-opacity="0"/></radialGradient>
+    <radialGradient id="sphere" cx=".3" cy=".22" r=".86"><stop stop-color="#386896"/><stop offset=".25" stop-color="#081b3b"/><stop offset=".56" stop-color="#01030c"/><stop offset=".78" stop-color="#091932"/><stop offset=".93" stop-color="#195881"/><stop offset="1" stop-color="#5ff3f5"/></radialGradient>
+    <linearGradient id="ribbon" x1="107" y1="72" x2="302" y2="351" gradientUnits="userSpaceOnUse"><stop stop-color="#070e29"/><stop offset=".17" stop-color="#8097ff"/><stop offset=".25" stop-color="#e0faff"/><stop offset=".29" stop-color="#4b54de"/><stop offset=".48" stop-color="#081224"/><stop offset=".67" stop-color="#1d56bc"/><stop offset=".78" stop-color="#55e7f3"/><stop offset=".85" stop-color="#273ea8"/><stop offset="1" stop-color="#020819"/></linearGradient>
+    <linearGradient id="rim" x1="88" y1="115" x2="308" y2="321" gradientUnits="userSpaceOnUse"><stop stop-color="#cbacff"/><stop offset=".3" stop-color="#3c6bc3"/><stop offset=".5" stop-color="#070a18"/><stop offset=".75" stop-color="#81f9ff"/><stop offset="1" stop-color="#1a3e7b"/></linearGradient>
+    <linearGradient id="glass" x1="124" y1="115" x2="254" y2="292" gradientUnits="userSpaceOnUse"><stop stop-color="#d8f9ff" stop-opacity=".9"/><stop offset=".2" stop-color="#4b8fff" stop-opacity=".15"/><stop offset=".6" stop-color="#284add" stop-opacity="0"/><stop offset="1" stop-color="#42eaf4" stop-opacity=".6"/></linearGradient>
+    <linearGradient id="shine"><stop stop-color="#fff"/><stop offset="1" stop-color="#69dfff" stop-opacity=".1"/></linearGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="7"/></filter>
+    <filter id="eye-glow" x="-100%" y="-60%" width="300%" height="220%"><feGaussianBlur stdDeviation="3"/></filter>
+  </defs>
+  <circle cx="210" cy="215" r="193" fill="url(#halo)"/>
+  <ellipse cx="211" cy="348" rx="78" ry="8" fill="#347edc" opacity=".25" filter="url(#soft)"/>
+  <g transform="rotate(-27 210 210)">
+    <ellipse cx="210" cy="210" rx="140" ry="151" stroke="url(#rim)" stroke-width="2"/>
+    <ellipse cx="210" cy="210" rx="130" ry="143" fill="url(#sphere)" stroke="#293e7a"/>
+    <ellipse cx="210" cy="210" rx="132" ry="145" stroke="url(#ribbon)" stroke-width="10"/>
+    <ellipse cx="210" cy="210" rx="117" ry="130" stroke="url(#rim)" stroke-width="1.5"/>
+    <path d="M115 131C138 81 227 64 272 105C214 78 157 113 137 167C124 204 128 269 175 311C116 286 89 196 115 131Z" fill="url(#glass)"/>
+    <path d="M129 114C157 85 211 76 247 89" stroke="url(#shine)" stroke-width="3" stroke-linecap="round"/>
+    <path d="M285 122C339 195 303 290 247 322" stroke="url(#rim)" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <path d="M113 295C73 258 134 165 202 127C265 91 303 101 315 126C339 178 220 323 143 317C102 314 104 287 123 260" stroke="#020719" stroke-width="20"/>
+  <path d="M113 295C73 258 134 165 202 127C265 91 303 101 315 126C339 178 220 323 143 317C102 314 104 287 123 260" stroke="url(#ribbon)" stroke-width="14"/>
+  <path d="M114 294C82 253 143 166 205 131C258 101 298 104 308 124" stroke="url(#rim)" stroke-width="2"/>
+  <path d="M127 290C129 314 192 298 240 256" stroke="#87f6ff" stroke-opacity=".6" stroke-width="2" stroke-linecap="round"/>
+  <g fill="#5cb9ff" filter="url(#eye-glow)"><rect x="168" y="183" width="16" height="32" rx="8"/><rect x="221" y="183" width="16" height="32" rx="8"/></g>
+  <g fill="#efffff"><rect x="171" y="183" width="11" height="27" rx="5.5"/><rect x="223" y="183" width="11" height="27" rx="5.5"/></g>
+  <ellipse cx="277" cy="136" rx="7" ry="3" transform="rotate(-22 277 136)" fill="#fff" opacity=".9"/>
+</svg>

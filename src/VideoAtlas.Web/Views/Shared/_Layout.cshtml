@@ -1,0 +1,36 @@
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@{ var embedded = ViewData["Embedded"] as bool? == true; }
+<!DOCTYPE html>
+<html lang="tr" data-bs-theme="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#06070b" />
+    @if (!embedded || ViewData["PrivateShare"] as bool? == true) { <meta name="csrf-token" content="@Antiforgery.GetAndStoreTokens(Context).RequestToken" /> }
+    <meta name="referrer" content="no-referrer" />
+    <title>@ViewData["Title"] · VideoAtlas</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/lib/bootstrap.min.css" />
+    <link rel="stylesheet" href="/css/site.css" asp-append-version="true" />
+</head>
+<body class="@(embedded ? "embed-layout" : "app-layout")">
+<a class="skip-link" href="#main">İçeriğe geç</a>
+@if (!embedded && User.Identity?.IsAuthenticated == true)
+{
+    <aside class="sidebar">
+        <a href="/" class="brand"><span class="brand-mark" aria-hidden="true"></span> Video<span>Atlas</span></a>
+        <div class="workspace-label">ÇALIŞMA ALANIM</div>
+        @if (User.IsInRole("Administrator")) { <a href="/admin/operations" class="nav-item">İşlemler ve kullanım</a> }
+        @if (User.IsInRole("Administrator")) { <a href="/admin/providers" class="nav-item" aria-label="AI sağlayıcı yönetimi"><span aria-hidden="true">⚙</span><span class="nav-label">AI sağlayıcıları</span></a> }
+        <nav aria-label="Ana gezinme"><a href="/" aria-label="Video kütüphanesi" class="nav-item @(Context.Request.Path == "/privacy" ? "" : "active")"><span aria-hidden="true">▦</span><span class="nav-label">Video kütüphanesi</span></a><a href="/privacy" aria-label="Gizlilik ve veriler" class="nav-item @(Context.Request.Path == "/privacy" ? "active" : "")"><span aria-hidden="true">◇</span><span class="nav-label">Gizlilik ve veriler</span></a></nav>
+        <div class="sidebar-note"><img src="/images/atlas-orb.svg" alt="" width="88" height="88" /><span class="eyebrow">DAHA FAZLASINI KEŞFEDİN</span><strong>Her an, yeni bir fikir.</strong><p>Videolarınızla konuşun.<br />Bilgiye doğrudan ulaşın.</p></div>
+        <div class="account-block"><span class="avatar">V</span><div><strong>Çalışma hesabı</strong><small>@User.Identity.Name</small></div></div>
+        <form action="/account/logout" method="post">@Html.AntiForgeryToken()<button class="signout" type="submit">Güvenli çıkış <span class="arrow-out" aria-hidden="true"></span></button></form>
+    </aside>
+}
+<main id="main" class="main-shell">@RenderBody()</main>
+<div id="toast" class="toast-message" role="status" aria-live="polite" hidden></div>
+<script type="module" src="/js/common.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

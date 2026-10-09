@@ -1,0 +1,16 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/TestResults/
+**/playwright-report/
+.vs/
+.env
+.env.*
+!.env.example
+data/
+artifacts/
+*.user
+*.db*
+*.log
+docker-local-start-*.stdout.log
+docker-local-start-*.stderr.log

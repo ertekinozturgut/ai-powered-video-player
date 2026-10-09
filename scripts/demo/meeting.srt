@@ -1,0 +1,39 @@
+1
+00:00:00,000 --> 00:00:15,000
+Ürün lansmanı 20 Ekim tarihinde yapılacak. İlk aşamada eğitim ekiplerine odaklanacağız.
+
+2
+00:00:15,000 --> 00:00:30,000
+Lansman öncesinde video kütüphanesi, altyazı araması ve kaynaklı sohbet tamamlanacak.
+
+3
+00:00:30,000 --> 00:00:45,000
+Lansman takviminde önce davetli kullanıcılarla başlayıp geri bildirim toplayacağız.
+
+4
+00:00:45,000 --> 00:01:00,000
+Bütçe yüz bin lira olarak belirlendi. Bu tutar ilk üç aylık geliştirme ve altyapı giderlerini kapsıyor.
+
+5
+00:01:00,000 --> 00:01:15,000
+Bütçe dağılımında altmış bin lira geliştirme, kırk bin lira altyapı için ayrıldı.
+
+6
+00:01:15,000 --> 00:01:30,000
+Altyapı maliyetleri haftalık olarak izlenecek ve kullanım limitleri uygulanacak.
+
+7
+00:01:30,000 --> 00:01:45,000
+Güvenlik testleri yayından önce tamamlanacak. Özel videolara yalnızca sahipleri erişebilecek.
+
+8
+00:01:45,000 --> 00:02:00,000
+Güvenlik kontrolünde paylaşım bağlantılarının süre sonu ve iptal davranışı doğrulanacak.
+
+9
+00:02:00,000 --> 00:02:15,000
+Destek ekibi kullanım kılavuzunu hazırlayacak ve soruları tek kanaldan toplayacak.
+
+10
+00:02:15,000 --> 00:02:30,000
+Kullanıcı geri bildirimleri her cuma değerlendirilecek. İlk sürüm küçük bir davetli gruba açılacak.

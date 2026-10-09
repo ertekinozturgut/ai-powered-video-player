@@ -1,0 +1,19 @@
+@{ ViewData["Title"] = "Gizlilik ve veri işleme"; }
+<article class="privacy-page">
+    <a href="/">← Çalışma alanına dön</a><span class="eyebrow">VERİLERİNİZ HAKKINDA</span><h1>Gizlilik ve veri işleme</h1>
+    <p>VideoAtlas, yüklediğiniz video, ses, konuşma metni ve soru içeriklerini videoyla çalışma hizmeti sunmak için işler. Videolarınız siz paylaşımı açmadıkça hesabınıza özeldir.</p>
+    <h2>AI hizmeti ve aktarım</h2>
+    <p>Sunucuda sağlayıcılar etkinleştirildiğinde video sesi seçili STT sağlayıcısına; konuşma metni ve sorular seçili dil modeli ve embedding sağlayıcılarına aktarılır. Yönetici ElevenLabs, OpenRouter, OpenAI, Azure veya n8n üzerinden yönlendirilen hizmetleri seçebilir. OpenRouter birden fazla alt model sağlayıcısına yönlendirebilir; n8n akışındaki sonraki hizmetler ayrıca işletmeci tarafından denetlenmelidir. İşletmeci kullanıcıları aktif sağlayıcılar ve değişiklikler hakkında bilgilendirmelidir. Veri işleme koşulları ve olası yurt dışı aktarım sorumluluğu uygulamayı işleten kuruluşa aittir. Paylaşma hakkınız ve katılımcıların gerekli bilgilendirmesi/onayı olmayan içerikleri yüklemeyin.</p>
+    <h2>Terimler, yönergeler ve transkript incelemesi</h2>
+    <p>Videoya eklediğiniz terim açıklamaları ve analiz yönergeleri, konu analizi, soru-cevap ve metin incelemesi için seçili dil modeline gönderilir. Hedefli yeniden transkripsiyonda ilgili ses parçası STT sağlayıcısına iletilir. Bu alanlara API anahtarı, parola veya paylaşılmaması gereken bilgi girmeyin. Alanlar iframe ziyaretçilerine doğrudan gösterilmez ancak üretilen cevapları etkileyebilir. Düzeltme önerileri kullanıcı onayı olmadan metni değiştirmez.</p>
+    <h2>Paylaşım ve gömme</h2>
+    <p>Paylaşım bağlantısı, ona sahip olan herkese video, metin ve sohbet erişimi sağlar. Site listesi sadece iframe gömmeyi sınırlar; doğrudan bağlantı erişimini sınırlandırmaz. Paylaşımı kapattığınızda sonraki erişimler durur; daha önce indirilmiş kopyalar geri alınamaz.</p>
+    <h2>Saklama ve silme</h2>
+    <p>İsteğe bağlı tüm metin taraması, sözlük destekleyen STT ve ikinci STT karşılaştırması ek sağlayıcı aktarımı/ücreti doğurabilir. Özel paylaşım seçildiğinde yalnızca belirtilen mevcut hesaplar giriş yaparak erişir; iframe kapalıdır. Açık paylaşımda metin sekmesini gizlemek, sohbetin alıntı vermesini önlemez.</p>
+    <p>Otomatik silme varsayılan olarak kapalıdır; açık onayla 1–365 günlük süre seçilebilir. Süresi dolan ve işlemde olmayan videolar saatlik, sınırlı sayıda temizlikle kaldırılır. İçerik veya anahtar içermeyen API kullanım kayıtları (hesap/video kimliği, sağlayıcı, işlem, zaman, token/ses ve ücret) kötüye kullanım ve maliyet denetimi için video silinse de 30 gün tutulur, sonra temizlenir.</p>
+    <p>Videolar ve dökümler silene kadar kalıcı diskte tutulur. İlk ham transkript, son 10 metin sürümü, inceleme uyarıları, sözlük ve yönergeler video kaydıyla birlikte saklanır. Metni düzeltmek eski ifadeyi geçmişten silmez. Video silme ilgili medya dosyalarını, döküm ve sürüm geçmişini, bağlamı ve paylaşım kaydını kaldırır. Sohbet geçmişi sunucuda saklanmaz; açık tarayıcı sekmesinde tutulur. Günlük soru sayacı kötüye kullanım ve maliyet kontrolü için kaydedilir. Yedeklerdeki silme süresini hizmet işletmecisi belirler.</p>
+    <h2>Hesap ve başvurular</h2>
+    <p>Hesap kapatma, kişisel veri başvurusu veya parola sıfırlama için hizmeti sunan kuruluşun yöneticisiyle iletişime geçin. Üretime açan kuruluş kendi veri sorumlusu kimliğini, iletişim adresini, hukuki dayanaklarını ve saklama politikasını bu metne eklemelidir.</p>
+    <h2>Yanıtların doğruluğu</h2>
+    <p>AI yanıtları ve düzeltme önerileri hatalı olabilir. Zaman kodlu alıntılara ve ses kaydına dönerek doğrulayın. Uyarı bulunmaması metnin hatasız olduğu anlamına gelmez; kural tabanlı uyarılar STT güven puanı değildir. Uzun videolarda soruyla ilgili bölümler ve seçilmiş bağlam kullanıldığından sonuçlar tüm içeriği eksiksiz kapsama garantisi vermez.</p>
+</article>
