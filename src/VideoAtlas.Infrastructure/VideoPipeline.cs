@@ -65,7 +65,10 @@ public sealed class VideoPipeline(AppDbContext db, MediaProcessor media, VideoIn
                 video.SetIssues(video.TranscriptIssues.Concat(TranscriptQuality.SilenceIssues(video.Segments, silence)));
                 video.MarkSilenceChecked(); await db.SaveChangesAsync(ct);
             }
-            if (video.FullReviewEnabled)
+            // SRT-only use remains fully local when no chat provider is configured. A full
+            // review is an optional AI enhancement, not a prerequisite for completing the
+            // imported transcript, local topics, extractive chat, or sharing.
+            if (video.FullReviewEnabled && await ai.IsConfiguredAsync(ct))
             {
                 while (video.QualityCursor < video.Segments.Count)
                 {
