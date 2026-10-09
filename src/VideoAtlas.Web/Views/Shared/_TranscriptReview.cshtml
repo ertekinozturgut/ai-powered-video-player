@@ -2,8 +2,13 @@
     <div class="dialog-heading"><h2 id="context-title">Video bağlamı ve yönergeler</h2><button type="button" class="icon-button" data-close aria-label="Kapat">×</button></div>
     <p class="muted">Sözlük ve yönergeler AI analizini yönlendirir; videoda söylenmiş bilgi yerine geçmez. Kaydetmek mevcut metni değiştirmez, konu ve indeks analizini yeniden başlatır.</p>
     <form id="context-form" class="stack-form">
-        <label for="context-terms">Terimler ve açıklamaları</label><textarea id="context-terms" class="form-control" rows="6" maxlength="32000" placeholder="Her satıra: terim | açıklama&#10;ARR | Yıllık yinelenen gelir"></textarea>
-        <small class="muted">En fazla 50 terim. Terim 100, açıklama 500 karakter. Açıklama aynı satırda olmalı.</small>
+        <label>Terimler ve açıklamaları</label>
+        <div id="context-terms-rows" class="term-rows" aria-label="Terim ve açıklama listesi"></div>
+        <button id="context-add-term" type="button" class="btn btn-outline-secondary">+ Terim ekle</button>
+        <small class="muted">Her satırda bir terim ve açıklaması bulunur. En fazla 50 terim; terim 100, açıklama 500 karakterdir.</small>
+        <label for="context-language">Analiz dili</label>
+        <select id="context-language" class="form-select"><option value="tr">Türkçe</option><option value="en">English</option></select>
+        <small class="muted">Konu başlıkları, AI kalite önerileri ve video sorularının yanıt dili bu seçime göre hazırlanır.</small>
         <label for="context-instructions">Analiz yönergeleri</label><textarea id="context-instructions" class="form-control" rows="4" maxlength="4000" placeholder="Örn. Riskleri ve aksiyonları ayrı konular halinde öne çıkar."></textarea>
         <small class="muted">Etkin AI sağlayıcısına aktarılır. Bu alanlar iframe ziyaretçilerine doğrudan gösterilmez; hassas veya gizli bilgi girmeyin, AI çıktısını etkileyebilir.</small>
         <div id="context-error" class="form-error" role="alert"></div><button id="context-save" class="btn btn-primary" type="submit">Bağlamı kaydet ve yeniden analiz et</button>

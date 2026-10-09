@@ -21,7 +21,7 @@ public sealed class LibraryController(IVideoStore store, VideoLibrary library, V
             var pair = line.Split('|', 2);
             return new VideoAtlas.Domain.VideoTerm(pair[0], pair.Length == 2 ? pair[1] : "");
         }).ToArray();
-        var context = TranscriptQuality.ValidateContext(terms, form.AnalysisInstructions ?? "");
+        var context = TranscriptQuality.ValidateContext(terms, form.AnalysisInstructions ?? "", form.AnalysisLanguage);
         var video = await library.UploadAsync(new(Owner, form.Title, form.File.Length, form.Consent, stream, context, form.FullReview), ct);
         return Created($"/api/videos/{video.Id}", video);
     }

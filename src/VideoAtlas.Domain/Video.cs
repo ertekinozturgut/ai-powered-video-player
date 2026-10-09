@@ -43,16 +43,17 @@ public sealed partial class Video
     public string ChatDay { get; private set; } = "";
     [SensitiveData] public List<VideoTerm> Terms { get; private set; } = [];
     [SensitiveData] public string AnalysisInstructions { get; private set; } = "";
+    public string AnalysisLanguage { get; private set; } = "tr";
     [SensitiveData] public List<TranscriptSegment> OriginalSegments { get; private set; } = [];
     [SensitiveData] public List<TranscriptRevision> TranscriptHistory { get; private set; } = [];
     [SensitiveData] public List<TranscriptIssue> TranscriptIssues { get; private set; } = [];
     public int TranscriptVersion { get; private set; }
     public int ReviewVersion { get; private set; }
-    public VideoContext Context => new(Terms, AnalysisInstructions);
+    public VideoContext Context => new(Terms, AnalysisInstructions, AnalysisLanguage);
 
     public void SetContext(VideoContext context)
     {
-        Terms = context.Terms.ToList(); AnalysisInstructions = context.Instructions;
+        Terms = context.Terms.ToList(); AnalysisInstructions = context.Instructions; AnalysisLanguage = context.Language;
         TranscriptIssues = []; ReviewVersion++;
         ResetQualityProgress();
     }

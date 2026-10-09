@@ -80,7 +80,10 @@ function renderTranscript() {
     const seekButton = element('button', 'transcript-seek'); seekButton.type = 'button'; seekButton.title = 'Bu anda videoya git';
     seekButton.append(element('span', 'timestamp', time(segment.start)), element('span', 'segment-text', segment.text));
     seekButton.addEventListener('click', () => seek(segment.start)); row.append(seekButton);
-    if (detail.uncertainSegmentIds?.includes(segment.id)) row.append(element('span', 'review-badge', 'İnceleme gerekli'));
+    if (detail.uncertainSegmentIds?.includes(segment.id)) {
+      row.append(element('span', 'review-badge', 'İnceleme gerekli'));
+      if (!embedded) { const inspect = element('button', 'inline-edit inline-inspect', 'AI öner'); inspect.type = 'button'; inspect.title = 'AI ile incele ve doğru alternatif öner'; inspect.setAttribute('aria-label', inspect.title); inspect.addEventListener('click', () => review?.inspectSegment(segment.id)); row.append(inspect); }
+    }
     if (!embedded) row.append(editButton('Metni ve zamanı düzenle', () => openTranscriptEdit(segment))); list.append(row);
   }
   if (!list.children.length) list.append(element('p', 'panel-empty', ready ? 'Bu sözcüklerle eşleşen konuşma yok.' : 'Metin dökümü hazır olduğunda burada görünecek.'));
@@ -173,9 +176,15 @@ $('#chat-form').addEventListener('submit', async event => {
 $('#chat-question').addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); $('#chat-form').requestSubmit(); } });
 $('#chat-action').addEventListener('change', () => {
   const action = $('#chat-action').value; $('#chat-section').hidden = action !== 'section';
+  document.querySelectorAll('[data-chat-action]').forEach(button => button.classList.toggle('selected', button.dataset.chatAction === action));
   if (action === 'section') { $('#section-start').value = Math.floor(video.currentTime); $('#section-end').value = Math.min(Math.floor(video.currentTime) + 30, detail.video.duration); }
   $('#chat-question').value = {summary:'Videonun ana noktalarını kaynaklarıyla özetle.',decisions:'Videoda açıkça alınan kararları bul.',actions:'Videodaki yapılacak işleri, belirtilmişse sorumluları ve tarihleri bul.',section:'Seçtiğim zaman aralığını açıkla.'}[action] ?? '';
 });
+document.querySelectorAll('[data-chat-action]').forEach(button => button.addEventListener('click', () => {
+  $('#chat-action').value = button.dataset.chatAction;
+  $('#chat-action').dispatchEvent(new Event('change'));
+  $('#chat-question').focus();
+}));
 document.querySelectorAll('[data-question]').forEach(button => button.addEventListener('click', () => { $('#chat-question').value = button.dataset.question; if (ready) $('#chat-form').requestSubmit(); }));
 $('#clear-chat').addEventListener('click', () => { if (asking) return; history = []; $('#chat-messages').replaceChildren(element('p', 'panel-empty', 'Sohbet temizlendi. Yeni bir soru sorabilirsiniz.')); });
 if (!embedded) {

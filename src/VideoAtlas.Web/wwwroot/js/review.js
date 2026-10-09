@@ -22,6 +22,20 @@ export function setupReview(base, getDetail, refresh) {
     update();
   }
   async function readState() { state = await api(`${base}/review`); }
+  function makeTermRow(term = '', description = '') {
+    const row = element('div', 'term-row');
+    const termInput = element('input', 'form-control'); termInput.type = 'text'; termInput.maxLength = 100; termInput.placeholder = 'Terim'; termInput.value = term; termInput.dataset.term = '';
+    const descriptionInput = element('input', 'form-control'); descriptionInput.type = 'text'; descriptionInput.maxLength = 500; descriptionInput.placeholder = 'Açıklama'; descriptionInput.value = description; descriptionInput.dataset.description = '';
+    const remove = element('button', 'icon-button term-remove', '×'); remove.type = 'button'; remove.title = 'Terimi kaldır'; remove.setAttribute('aria-label', 'Terimi kaldır'); remove.addEventListener('click', () => row.remove());
+    row.append(termInput, descriptionInput, remove); return row;
+  }
+  function fillTerms(terms) {
+    const rows = $('#context-terms-rows'); rows.replaceChildren();
+    (terms.length ? terms : [{term: '', description: ''}]).forEach(t => rows.append(makeTermRow(t.term, t.description)));
+  }
+  function contextTerms() {
+    return [...$('#context-terms-rows').querySelectorAll('.term-row')].map(row => ({term: $('[data-term]', row).value.trim(), description: $('[data-description]', row).value.trim()})).filter(t => t.term || t.description);
+  }
   function fillSegments() {
     const select = $('#review-segment'), previous = select.value;
     select.replaceChildren();
@@ -75,18 +89,18 @@ export function setupReview(base, getDetail, refresh) {
   $('#context-open').addEventListener('click', async () => {
     if (busy()) return;
     try {
-      await readState(); $('#context-terms').value = state.context.terms.map(t => `${t.term} | ${t.description}`).join('\n');
-      $('#context-instructions').value = state.context.instructions; $('#context-error').textContent = '';
+      await readState(); fillTerms(state.context.terms);
+      $('#context-instructions').value = state.context.instructions; $('#context-language').value = state.context.language === 'en' ? 'en' : 'tr'; $('#context-error').textContent = '';
       contextDialog.showModal();
     } catch (e) { toast(e.message); }
   });
   $('#context-form').addEventListener('submit', event => {
     event.preventDefault();
-    const terms = $('#context-terms').value.split('\n').filter(l => l.trim()).map(line => {
-      const separator = line.indexOf('|');
-      return {term: (separator < 0 ? line : line.slice(0, separator)).trim(), description: separator < 0 ? '' : line.slice(separator + 1).trim()};
-    });
-    run('context', {terms, instructions: $('#context-instructions').value}, true, true);
+    run('context', {terms: contextTerms(), instructions: $('#context-instructions').value, language: $('#context-language').value}, true, true);
+  });
+  $('#context-add-term').addEventListener('click', () => {
+    const rows = $('#context-terms-rows'); if (rows.children.length >= 50) return toast('En fazla 50 terim ekleyebilirsiniz.');
+    const row = makeTermRow(); rows.append(row); $('[data-term]', row).focus();
   });
   $('#review-open').addEventListener('click', async () => {
     if (busy()) return;
@@ -119,5 +133,14 @@ export function setupReview(base, getDetail, refresh) {
     if (confirm('Seçilen metin sürümü geri yüklenecek. Konular ve indeks yeniden hazırlanacak; paylaşılan video da güncellenecek. Devam edilsin mi?'))
       run(`restore/${$('#review-revision').value}`, {}, true);
   });
-  return {update};
+  async function inspectSegment(segmentId) {
+    if (busy()) return;
+    try {
+      await readState(); $('#review-error').textContent = ''; fillSegments();
+      const select = $('#review-segment'); if ([...select.options].some(option => option.value === String(segmentId))) select.value = String(segmentId);
+      showSegment(); dialog.showModal();
+      const selected = segment(); if (selected) await run(`segments/${selected.id}/ai`);
+    } catch (e) { toast(e.message); }
+  }
+  return {update, inspectSegment};
 }

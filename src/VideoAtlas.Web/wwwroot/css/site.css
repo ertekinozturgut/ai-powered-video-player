@@ -215,6 +215,7 @@ progress { width: 100%; height: 7px; accent-color: var(--primary); }
 .chapter-seek { display: flex; gap: 13px; flex: 1; min-width: 0; background: transparent; border: 0; text-align: left; padding: 7px 6px; color: inherit; }
 .inline-edit { flex: 0 0 auto; border: 1px solid #63567f; border-radius: 14px; background: #302743; color: #e0d8f5; padding: 5px 8px; font-size: 9px; line-height: 1; margin: 4px; }
 .inline-edit:hover { border-color: var(--cyan); color: #d9fcff; }
+.inline-inspect { border-color: #8a6b33; color: #ffe0a3; }
 .chapter-number { color: var(--muted); font-size: 11px; margin-top: 3px; }
 .chapter-body { display: flex; flex-direction: column; gap: 5px; min-width: 0; overflow-wrap: anywhere; }
 .chapter-category { font-size: 9px; color: var(--cyan); }
@@ -436,6 +437,10 @@ progress { width: 100%; height: 7px; accent-color: var(--primary); }
 .context-fields { padding: 14px; border: 1px solid #34384b; border-radius: 14px; }
 .context-fields label { display: block; margin-top: 14px; }
 .context-fields small { display: block; margin-top: 8px; }
+.term-rows { display: grid; gap: 8px; }
+.term-row { display: grid; grid-template-columns: minmax(110px, .55fr) minmax(160px, 1.45fr) 34px; gap: 8px; align-items: center; }
+.term-row .form-control { min-width: 0; }
+.term-remove { width: 34px; height: 34px; }
 .review-dialog { width: min(760px, calc(100vw - 24px)); }
 .review-dialog > label, .review-history label { display: block; margin: 14px 0 6px; }
 .review-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 14px 0; }
@@ -455,6 +460,16 @@ progress { width: 100%; height: 7px; accent-color: var(--primary); }
 .operations-panel summary { cursor: pointer; font-weight: 600; margin-bottom: 12px; }
 .operations-panel li { padding: 5px 0; }
 .chat-actions { padding-bottom: 10px; }
+.quick-actions { margin-top: 4px; }
+.quick-actions-title { display: block; color: var(--muted); font-size: 9px; letter-spacing: .7px; margin: 0 0 8px 2px; text-transform: uppercase; }
+.quick-action-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.quick-action { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 6px 9px; border: 1px solid #4b4767; border-radius: 14px; background: #171629; color: #c9cae3; font-size: 9px; line-height: 1.1; transition: .16s ease; }
+.quick-action span { color: #89ddea; font-size: 12px; line-height: 1; }
+.quick-action:hover { border-color: #829de0; background: #272341; color: #f1efff; }
+.quick-action.selected { border-color: #6ad7e8; background: linear-gradient(135deg, #1d5368, #30285c); color: #f2fdff; box-shadow: inset 0 1px 0 #fff2, 0 0 14px #48cce322; }
+.quick-action.selected span { color: #dcfaff; }
+.quick-actions #chat-section { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.quick-actions #chat-section label { font-size: 9px; color: var(--muted); }
 .grounded-claim { margin: 12px 0; }
 .player-grid.without-chat { grid-template-columns: minmax(0, 1fr); }
 .theme-minimal { background: #121212; }

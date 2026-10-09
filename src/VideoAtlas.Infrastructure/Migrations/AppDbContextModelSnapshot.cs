@@ -219,6 +219,10 @@ namespace VideoAtlas.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("AnalysisLanguage")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("AnalysisMode")
                         .IsRequired()
                         .HasColumnType("TEXT");

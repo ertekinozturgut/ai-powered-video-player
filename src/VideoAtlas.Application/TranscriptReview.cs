@@ -7,7 +7,7 @@ public sealed record ReviewState(int Version, VideoContext Context, IReadOnlyLis
     IReadOnlyList<RevisionInfo> Revisions, bool HasOriginal, IReadOnlyList<TranscriptSegment> OriginalSegments,
     IReadOnlyList<TranscriptSegment> Segments, int TranscriptVersion);
 public sealed record RevisionInfo(int Number, DateTimeOffset CreatedAt, string Reason);
-public sealed record ContextCommand(int Version, IReadOnlyList<VideoTerm> Terms, string Instructions);
+public sealed record ContextCommand(int Version, IReadOnlyList<VideoTerm> Terms, string Instructions, string Language = "tr");
 public sealed record EditTranscriptCommand(int Version, int SegmentId, string Text, bool AudioVerified, double? Start = null, double? End = null);
 public sealed record EditChapterCommand(int Version, int ChapterIndex, string Title, string Summary, string Category, double Start, double End);
 public sealed record ReviewCommand(int Version);
@@ -26,7 +26,7 @@ public static partial class TranscriptQuality
         segments.Where(s => s.End > s.Start && silence.Sum(g => Math.Max(0, Math.Min(g.End, s.End) - Math.Max(g.Start, s.Start))) / (s.End - s.Start) >= .8)
             .Take(300).Select(s => new TranscriptIssue(Guid.NewGuid(), s.Id,
                 "Bu metnin zaman aralığının en az %80'i düşük ses seviyesinde (-40 dB). Sessizlikte üretilmiş metin veya çok kısık konuşma olabilir; sesi doğrulayın.", null, "silence")).ToArray();
-    public static VideoContext ValidateContext(IReadOnlyList<VideoTerm>? terms, string? instructions)
+    public static VideoContext ValidateContext(IReadOnlyList<VideoTerm>? terms, string? instructions, string? language = "tr")
     {
         if (terms is null || terms.Count > 50 || instructions is null || instructions.Length > 4000 ||
             terms.Any(t => t is null || string.IsNullOrWhiteSpace(t.Term) || t.Term.Length > 100 ||
@@ -35,7 +35,8 @@ public static partial class TranscriptQuality
         var clean = terms.Select(t => new VideoTerm(t.Term.Trim(), t.Description.Trim())).ToArray();
         if (clean.Select(t => t.Term).Distinct(StringComparer.OrdinalIgnoreCase).Count() != clean.Length)
             throw new AppException(400, "invalid_context", "Aynı terimi yalnızca bir kez ekleyin.");
-        return new(clean, instructions.Trim());
+        if (language is not ("tr" or "en")) throw new AppException(400, "invalid_language", "Analiz dili Türkçe veya English olmalıdır.");
+        return new(clean, instructions.Trim(), language);
     }
     public static IReadOnlyList<TranscriptIssue> Detect(IReadOnlyList<TranscriptSegment> segments, VideoContext context)
     {
@@ -85,7 +86,7 @@ public sealed class TranscriptReviewService(IVideoStore store, MutationGate gate
     public Task SaveContextAsync(Guid id, string owner, ContextCommand command, CancellationToken ct) =>
         MutateAsync(id, owner, command.Version, v =>
         {
-            v.SetContext(TranscriptQuality.ValidateContext(command.Terms, command.Instructions));
+            v.SetContext(TranscriptQuality.ValidateContext(command.Terms, command.Instructions, command.Language));
             v.SetIssues(TranscriptQuality.Detect(v.Segments, v.Context));
             if (v.Segments.Count > 0) { v.SetIndex([], ""); v.Requeue(); }
         }, ct);

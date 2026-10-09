@@ -14,6 +14,7 @@ public sealed class UploadForm
     public bool Consent { get; set; }
     [StringLength(32000)] public string? Terms { get; set; }
     [StringLength(4000)] public string? AnalysisInstructions { get; set; }
+    [RegularExpression("^(tr|en)$")] public string AnalysisLanguage { get; set; } = "tr";
     public bool FullReview { get; set; }
 }
 public sealed record SubtitleForm([Required, StringLength(2_000_000)] string Content);

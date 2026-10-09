@@ -9,6 +9,8 @@
             <small class="muted">En fazla 50 terim. Terim 100, açıklama 500 karakter; her terim ayrı satırda.</small>
             <label for="upload-instructions">Analiz yönergeleri</label><textarea id="upload-instructions" name="analysisInstructions" class="form-control" rows="3" maxlength="4000" placeholder="Örn. Kararları, sorumluları ve açık kalan soruları öne çıkar."></textarea>
             <small class="muted">Yönergeler ve sözlük yardımcı bağlamdır; videoda söylenmiş bilgi sayılmaz. Etkin AI sağlayıcısına gönderilir.</small>
+            <label for="upload-language">Analiz dili</label><select id="upload-language" name="analysisLanguage" class="form-select"><option value="tr">Türkçe</option><option value="en">English</option></select>
+            <small class="muted">Konu başlıkları, kalite önerileri ve AI yanıtları seçtiğiniz dilde üretilir.</small>
         </details>
         <label class="check-label"><input name="consent" type="checkbox" value="true" required /><span>Bu videoyu işleme hakkına sahibim. Video/ses/metnin işlenmesini ve etkin STT, dil modeli ve indeksleme sağlayıcılarına aktarılmasını <a href="/privacy" target="_blank" rel="noopener">veri işleme açıklaması</a> kapsamında onaylıyorum.</span></label>
         <label class="check-label"><input name="fullReview" type="checkbox" value="true" /> Tüm metni AI ile kalite taramasından geçir (ek API ücreti doğurabilir).</label>
