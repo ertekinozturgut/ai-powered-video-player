@@ -5,7 +5,7 @@
       "launchBrowser": true,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "Storage__Root": "artifacts/local-publish/data"
+        "Storage__Root": "data"
       },
       "applicationUrl": "https://127.0.0.1:5081;http://127.0.0.1:5080"
     }
