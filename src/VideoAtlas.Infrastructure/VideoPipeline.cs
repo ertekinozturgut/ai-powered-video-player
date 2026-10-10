@@ -42,7 +42,7 @@ public sealed class VideoPipeline(AppDbContext db, MediaProcessor media, VideoIn
                     var offset = window.Start;
                     if (video.TranscriptChunks.Any(c => c.Offset == offset)) continue;
                     var end = window.End;
-                    var audio = await media.AudioAsync(video.Id, offset, end - offset, ct);
+                    var audio = await media.AudioAsync(video.Id, offset, end - offset, video.Context.DiarizationEnabled, ct);
                     if (audio is null) { video.AwaitTranscript(); return; }
                     video.Report($"Konuşma parçası {video.TranscriptChunks.Count + 1}/{windows.Count} çözümleniyor", 15 + (int)(45 * offset / video.Duration));
                     await db.SaveChangesAsync(ct);
@@ -78,6 +78,16 @@ public sealed class VideoPipeline(AppDbContext db, MediaProcessor media, VideoIn
             // imported transcript, local topics, extractive chat, or sharing.
             if (video.FullReviewEnabled && await ai.IsConfiguredAsync(ct))
             {
+                TranscriptContextProfile profile;
+                try
+                {
+                    usage.SetOperation("context-profile");
+                    profile = await reviewer.AnalyzeContextAsync(video.Segments, video.Context, ct);
+                }
+                catch (AiException exception) when (exception.Code == "ai_invalid_response")
+                {
+                    profile = TranscriptContextProfile.Empty;
+                }
                 while (video.QualityCursor < video.Segments.Count)
                 {
                     ct.ThrowIfCancellationRequested();
@@ -88,7 +98,7 @@ public sealed class VideoPipeline(AppDbContext db, MediaProcessor media, VideoIn
                     var context = video.Segments.Skip(Math.Max(0, video.QualityCursor - 1)).Take(batch.Length + (video.QualityCursor > 0 ? 1 : 0)).ToArray();
                     usage.SetOperation("quality-scan");
                     IReadOnlyList<TranscriptIssue> issues;
-                    try { issues = await reviewer.InspectBatchAsync(context, video.Context, ct); }
+                    try { issues = await reviewer.InspectBatchAsync(context, video.Context, profile, ct); }
                     catch (AiException exception) when (exception.Code == "ai_invalid_response")
                     {
                         // A malformed optional review response must not invalidate a

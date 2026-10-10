@@ -11,10 +11,22 @@ public sealed record ContextCommand(int Version, IReadOnlyList<VideoTerm> Terms,
 public sealed record EditTranscriptCommand(int Version, int SegmentId, string Text, bool AudioVerified, double? Start = null, double? End = null);
 public sealed record EditChapterCommand(int Version, int ChapterIndex, string Title, string Summary, string Category, double Start, double End);
 public sealed record ReviewCommand(int Version);
+public sealed record ContextCorrection(string Observed, string Preferred, string Kind, IReadOnlyList<int> EvidenceSegmentIds);
+public sealed record TranscriptContextProfile(string DetectedLanguage, string Subject, IReadOnlyList<string> ProperNames,
+    IReadOnlyList<string> Brands, IReadOnlyList<string> Locations, IReadOnlyList<ContextCorrection> Corrections)
+{
+    public static TranscriptContextProfile Empty { get; } = new("unknown", "", [], [], [], []);
+}
 public interface ITranscriptReviewer
 {
+    Task<TranscriptContextProfile> AnalyzeContextAsync(IReadOnlyList<TranscriptSegment> segments, VideoContext context, CancellationToken ct) =>
+        Task.FromResult(TranscriptContextProfile.Empty);
     Task<IReadOnlyList<TranscriptIssue>> InspectBatchAsync(IReadOnlyList<TranscriptSegment> segments, VideoContext context, CancellationToken ct) => Task.FromResult<IReadOnlyList<TranscriptIssue>>([]);
+    Task<IReadOnlyList<TranscriptIssue>> InspectBatchAsync(IReadOnlyList<TranscriptSegment> segments, VideoContext context,
+        TranscriptContextProfile profile, CancellationToken ct) => InspectBatchAsync(segments, context, ct);
     Task<TranscriptIssue?> InspectAsync(IReadOnlyList<TranscriptSegment> neighbors, int segmentId, VideoContext context, CancellationToken ct);
+    Task<TranscriptIssue?> InspectAsync(IReadOnlyList<TranscriptSegment> neighbors, int segmentId, VideoContext context,
+        TranscriptContextProfile profile, CancellationToken ct) => InspectAsync(neighbors, segmentId, context, ct);
     Task<TranscriptIssue> RetranscribeAsync(Guid videoId, double duration, TranscriptSegment segment, CancellationToken ct);
     Task<TranscriptIssue> RetranscribeAsync(Guid videoId, double duration, TranscriptSegment segment, VideoContext context, bool secondary, CancellationToken ct) => RetranscribeAsync(videoId, duration, segment, ct);
     Task<TranscriptIssue> AlignAsync(Guid videoId, double duration, TranscriptSegment segment, CancellationToken ct) => throw new AppException(409, "alignment_unavailable", "Aktif STT sağlayıcısı ses–metin hizalamasını desteklemiyor.");
@@ -37,7 +49,7 @@ public static partial class TranscriptQuality
         if (clean.Select(t => t.Term).Distinct(StringComparer.OrdinalIgnoreCase).Count() != clean.Length)
             throw new AppException(400, "invalid_context", "Aynı terimi yalnızca bir kez ekleyin.");
         if (language is not ("tr" or "en")) throw new AppException(400, "invalid_language", "Analiz dili Türkçe veya English olmalıdır.");
-        if (diarizationEnabled && speakerCount is not (>= 2 and <= 32))
+        if (diarizationEnabled && speakerCount is not null and not (>= 2 and <= 32))
             throw new AppException(400, "invalid_speaker_count", "Konuşmacı ayrımı için konuşmacı sayısı 2–32 arasında olmalıdır.");
         return new(clean, instructions.Trim(), language, diarizationEnabled, diarizationEnabled ? speakerCount : null);
     }
@@ -155,6 +167,7 @@ public sealed class TranscriptReviewService(IVideoStore store, MutationGate gate
     {
         TranscriptSegment segment;
         TranscriptSegment[] neighbors;
+        TranscriptSegment[] fullTranscript;
         VideoContext context;
         double duration;
         await gate.Semaphore.WaitAsync(ct);
@@ -164,6 +177,7 @@ public sealed class TranscriptReviewService(IVideoStore store, MutationGate gate
             segment = v.Segments.FirstOrDefault(s => s.Id == segmentId) ?? throw VideoAccess.Missing();
             var position = v.Segments.FindIndex(s => s.Id == segmentId);
             neighbors = v.Segments.Skip(Math.Max(0, position - 2)).Take(5).ToArray();
+            fullTranscript = v.Segments.ToArray();
             context = v.Context; duration = v.Duration;
             usage?.SetVideo(v);
         }
@@ -171,9 +185,12 @@ public sealed class TranscriptReviewService(IVideoStore store, MutationGate gate
         // No global mutation lock is held during paid network/audio operations.
         usage?.SetOperation(align ? "alignment" : secondary ? "secondary-stt" : retranscribe ? "retranscribe" : "review",
             retranscribe || align ? Math.Min(duration, segment.End + 3) - Math.Max(0, segment.Start - 3) : null);
+        var profile = !align && !retranscribe
+            ? await reviewer.AnalyzeContextAsync(fullTranscript, context, ct)
+            : TranscriptContextProfile.Empty;
         var issue = align ? await reviewer.AlignAsync(id, duration, segment, ct)
             : retranscribe ? await reviewer.RetranscribeAsync(id, duration, segment, context, secondary, ct)
-            : await reviewer.InspectAsync(neighbors, segmentId, context, ct);
+            : await reviewer.InspectAsync(neighbors, segmentId, context, profile, ct);
         await MutateAsync(id, owner, version, v =>
         {
             var source = align ? "alignment" : secondary ? "stt-secondary" : retranscribe ? "stt" : "llm";

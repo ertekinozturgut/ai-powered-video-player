@@ -31,6 +31,8 @@ public sealed class TranscriptQualityTests
     {
         var context = TranscriptQuality.ValidateContext([], "", "tr", true, 3);
         Assert.True(context.DiarizationEnabled); Assert.Equal(3, context.SpeakerCount);
+        var automatic = TranscriptQuality.ValidateContext([], "", "tr", true, null);
+        Assert.True(automatic.DiarizationEnabled); Assert.Null(automatic.SpeakerCount);
         Assert.Throws<AppException>(() => TranscriptQuality.ValidateContext([], "", "tr", true, 1));
         Assert.Throws<AppException>(() => TranscriptQuality.ValidateContext([], "", "tr", true, 33));
         var disabled = TranscriptQuality.ValidateContext([], "", "tr", false, 3);
@@ -166,6 +168,31 @@ public sealed class TranscriptQualityTests
         var error = await Assert.ThrowsAsync<AiException>(() => reviewer.InspectAsync(new MemoryStore().Video.Segments, 0, VideoContext.Empty, default));
         Assert.Equal("ai_invalid_response", error.Code);
     }
+    [Fact] public async Task WholeTranscriptContextProfileIsIncludedInTargetedReview()
+    {
+        var handler = new ReviewHandler(); await using var services = ProviderTestServices.Create(handler).BuildServiceProvider();
+        var reviewer = new TranscriptReviewer(services.GetRequiredService<IAiProviderFactory>(), null!, null!);
+        var segments = new MemoryStore().Video.Segments;
+
+        var profile = await reviewer.AnalyzeContextAsync(segments, VideoContext.Empty, default);
+        var suggestion = await reviewer.InspectAsync(segments, 1, VideoContext.Empty, profile, default);
+
+        Assert.Equal("tr", profile.DetectedLanguage); Assert.Equal("VideoAtlas", Assert.Single(profile.Brands));
+        Assert.NotNull(suggestion); Assert.Equal(2, handler.Bodies.Count);
+        using var request = JsonDocument.Parse(handler.Bodies[1]);
+        using var data = JsonDocument.Parse(request.RootElement.GetProperty("messages")[1].GetProperty("content").GetString()!);
+        Assert.Equal("VideoAtlas", data.RootElement.GetProperty("conversationProfile").GetProperty("brands")[0].GetString());
+    }
+    [Fact] public async Task ContextCorrectionWithoutRepeatedEvidenceIsRejected()
+    {
+        const string reply = "{\"detectedLanguage\":\"tr\",\"subject\":\"Görüşme\",\"properNames\":[],\"brands\":[],\"locations\":[],\"corrections\":[{\"observed\":\"Atlaş\",\"preferred\":\"Atlas\",\"kind\":\"brand\",\"evidenceSegmentIds\":[0]}]}";
+        await using var services = ProviderTestServices.Create(new ReviewHandler(reply)).BuildServiceProvider();
+        var reviewer = new TranscriptReviewer(services.GetRequiredService<IAiProviderFactory>(), null!, null!);
+
+        var error = await Assert.ThrowsAsync<AiException>(() => reviewer.AnalyzeContextAsync(new MemoryStore().Video.Segments, VideoContext.Empty, default));
+
+        Assert.Equal("ai_invalid_response", error.Code);
+    }
     [Fact] public async Task TargetedAudioIsClippedAndTemporaryFileDeletedWhileTranscriptIsUnchanged()
     {
         await using var app = new PausedVideoAppFactory(); using var client = app.CreateClient();
@@ -231,7 +258,8 @@ public sealed class TranscriptQualityTests
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             var body = await request.Content!.ReadAsStringAsync(ct); Bodies.Add(body);
-            var inner = reply ?? (body.Contains("firstSegmentId", StringComparison.Ordinal) ? "{\"chapters\":[{\"title\":\"Konu\",\"summary\":\"Özet\",\"category\":\"Genel\",\"firstSegmentId\":0}]}"
+            var inner = reply ?? (body.Contains("conversationProfilePurpose", StringComparison.Ordinal) ? "{\"detectedLanguage\":\"tr\",\"subject\":\"Ürün görüşmesi\",\"properNames\":[],\"brands\":[\"VideoAtlas\"],\"locations\":[],\"corrections\":[{\"observed\":\"Video Atlaş\",\"preferred\":\"VideoAtlas\",\"kind\":\"brand\",\"evidenceSegmentIds\":[0,1]}]}"
+                : body.Contains("firstSegmentId", StringComparison.Ordinal) ? "{\"chapters\":[{\"title\":\"Konu\",\"summary\":\"Özet\",\"category\":\"Genel\",\"firstSegmentId\":0}]}"
                 : body.Contains("targetSegmentId", StringComparison.Ordinal) ? "{\"suspicious\":true,\"reason\":\"Terimi kontrol edin\",\"suggestion\":null}" : "{\"answer\":\"Bütçe yüz bin lira\",\"segmentIds\":[1]}");
             return new(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(new { choices = new[] { new { message = new { content = inner } } } }), Encoding.UTF8, "application/json") };
         }

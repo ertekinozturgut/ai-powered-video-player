@@ -80,7 +80,7 @@ Linux example:
 
 ## Complete analysis call
 
-Call `analyze_audio` with an absolute file path, optional language, Whisper model, and optional expected speaker count:
+Call `analyze_audio` with an absolute file path, optional language, Whisper model, and optional expected speaker count. Set `automaticSpeakerDetection` to `true` and omit `speakerCount` to estimate it from voice embeddings, acoustic/frequency features, and stereo-channel evidence:
 
 ```json
 {
@@ -88,9 +88,11 @@ Call `analyze_audio` with an absolute file path, optional language, Whisper mode
   "outputDirectory": "/srv/videoatlas-output/interview-001",
   "model": "large-v3-turbo",
   "language": "tr",
-  "speakerCount": 2
+  "automaticSpeakerDetection": true
 }
 ```
+
+Automatic detection is conservative and is not an identity system. For overlapping speech or similar voices, pass an explicit `speakerCount` from 2 to 32. The `diarize_transcript` tool accepts `speakerCount: 0` for the same automatic mode.
 
 The original recording is read-only. A requested output directory must be new or empty, so an MCP call cannot silently replace an earlier analysis.
 

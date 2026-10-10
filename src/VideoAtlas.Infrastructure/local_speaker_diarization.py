@@ -17,6 +17,7 @@ import librosa
 import numpy as np
 from resemblyzer import VoiceEncoder, preprocess_wav
 from sklearn.cluster import AgglomerativeClustering, KMeans
+from sklearn.metrics import silhouette_score
 import torch
 
 
@@ -30,7 +31,8 @@ def arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--audio", required=True)
     parser.add_argument("--segments", required=True)
-    parser.add_argument("--speaker-count", required=True, type=int)
+    parser.add_argument("--speaker-count", default=0, type=int,
+                        help="Expected speakers (2-32), or 0 to detect automatically")
     parser.add_argument("--output", required=True)
     return parser.parse_args()
 
@@ -102,6 +104,31 @@ def acoustic_features(clip: np.ndarray) -> np.ndarray:
     return np.nan_to_num(result, nan=0.0, posinf=0.0, neginf=0.0).astype(np.float32)
 
 
+def channel_features(channels: np.ndarray, start: float, end: float) -> np.ndarray:
+    """Describe which source channel carries each voice turn.
+
+    Stereo interviews and conference exports sometimes place people on separate
+    channels. Relative energy and correlation are appended as weak evidence;
+    voice identity remains dominant so ordinary stereo ambience cannot create
+    fake speakers by itself.
+    """
+    if channels.ndim == 1 or channels.shape[0] < 2:
+        return np.zeros(4, dtype=np.float32)
+    duration = channels.shape[1] / SAMPLE_RATE
+    left = int(max(0.0, min(float(start), duration)) * SAMPLE_RATE)
+    right = int(max(float(start), min(float(end), duration)) * SAMPLE_RATE)
+    clips = channels[:2, left:right]
+    if clips.shape[1] < 2:
+        return np.zeros(4, dtype=np.float32)
+    energy = np.sqrt(np.mean(np.square(clips), axis=1) + 1e-10)
+    total = float(np.sum(energy))
+    shares = energy / max(total, 1e-8)
+    correlation = float(np.corrcoef(clips[0], clips[1])[0, 1])
+    if not np.isfinite(correlation):
+        correlation = 0.0
+    return np.array([shares[0], shares[1], shares[0] - shares[1], correlation], dtype=np.float32)
+
+
 def combined_features(voice: list[np.ndarray], acoustic: list[np.ndarray]) -> np.ndarray:
     voice_rows = l2_normalize(np.stack(voice).astype(np.float32))
     acoustic_rows = np.stack(acoustic).astype(np.float32)
@@ -151,6 +178,8 @@ def smooth_short_outliers(
 
 def cluster_speakers(features: np.ndarray, speaker_count: int) -> np.ndarray:
     """Cluster voices while rejecting degenerate one-clip speaker groups."""
+    if speaker_count == 1:
+        return np.zeros(len(features), dtype=np.int32)
     labels = AgglomerativeClustering(
         n_clusters=speaker_count, metric="cosine", linkage="average"
     ).fit_predict(features)
@@ -166,6 +195,30 @@ def cluster_speakers(features: np.ndarray, speaker_count: int) -> np.ndarray:
     return KMeans(
         n_clusters=speaker_count, n_init=20, random_state=0,
     ).fit_predict(features)
+
+
+def detect_speaker_count(features: np.ndarray) -> int:
+    """Choose a conservative speaker count from local voice/acoustic evidence."""
+    if len(features) < 4:
+        return 1
+    maximum = min(8, len(features) - 1)
+    best_count = 1
+    best_score = 0.10
+    for count in range(2, maximum + 1):
+        labels = AgglomerativeClustering(
+            n_clusters=count, metric="cosine", linkage="average"
+        ).fit_predict(features)
+        counts = np.bincount(labels, minlength=count)
+        if int(np.min(counts)) < 2:
+            continue
+        score = float(silhouette_score(features, labels, metric="cosine"))
+        # Prefer the simpler explanation unless an extra voice has materially
+        # stronger separation. This reduces noise/breath clusters.
+        adjusted = score - 0.025 * (count - 2)
+        if adjusted > best_score:
+            best_score = adjusted
+            best_count = count
+    return best_count
 
 
 def stabilize_sequence(labels: np.ndarray, features: np.ndarray) -> np.ndarray:
@@ -205,13 +258,14 @@ def stabilize_sequence(labels: np.ndarray, features: np.ndarray) -> np.ndarray:
 
 def main() -> int:
     args = arguments()
-    if not 2 <= args.speaker_count <= 32:
-        raise ValueError("speaker-count must be between 2 and 32")
+    if args.speaker_count != 0 and not 2 <= args.speaker_count <= 32:
+        raise ValueError("speaker-count must be 0 (automatic) or between 2 and 32")
     segments = json.loads(Path(args.segments).read_text(encoding="utf-8"))
     if not isinstance(segments, list) or not segments:
         raise ValueError("segments must be a non-empty JSON array")
 
-    waveform, _ = librosa.load(args.audio, sr=SAMPLE_RATE, mono=True)
+    source_channels, _ = librosa.load(args.audio, sr=SAMPLE_RATE, mono=False)
+    waveform = source_channels if source_channels.ndim == 1 else np.mean(source_channels, axis=0)
     if waveform.size < SAMPLE_RATE // 2:
         raise ValueError("audio is too short for speaker diarization")
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -229,13 +283,19 @@ def main() -> int:
         embedding = encoder.embed_utterance(prepared)
         if np.all(np.isfinite(embedding)):
             embeddings.append(embedding)
-            acoustics.append(acoustic_features(clip))
+            acoustics.append(np.concatenate((
+                acoustic_features(clip),
+                channel_features(source_channels, segment["start"], segment["end"]),
+            )))
             valid_indices.append(index)
 
-    if len(embeddings) < args.speaker_count:
+    if not embeddings:
+        raise ValueError("no voiced segments available for speaker diarization")
+    if args.speaker_count > 0 and len(embeddings) < args.speaker_count:
         raise ValueError("not enough voiced segments for the requested speaker count")
     features = combined_features(embeddings, acoustics)
-    clusters = cluster_speakers(features, args.speaker_count)
+    speaker_count = args.speaker_count or detect_speaker_count(features)
+    clusters = cluster_speakers(features, speaker_count)
     clusters = stabilize_sequence(clusters, features)
     clusters = smooth_short_outliers(clusters, features, valid_indices, segments)
 

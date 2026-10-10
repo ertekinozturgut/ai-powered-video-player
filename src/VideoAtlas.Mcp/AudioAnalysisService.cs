@@ -36,19 +36,21 @@ public sealed class AudioAnalysisService(PathPolicy paths, ExternalProcessRunner
     }
 
     public async Task<AudioAnalysisManifest> AnalyzeAsync(string inputPath, string? outputDirectory, string model,
-        string? language, int? speakerCount, CancellationToken ct)
+        string? language, int? speakerCount, bool automaticSpeakerDetection, CancellationToken ct)
     {
         var source = ValidateMedia(inputPath);
         ValidateOptions(model, language, speakerCount);
+        if (speakerCount.HasValue && automaticSpeakerDetection)
+            throw new ArgumentException("Choose either an explicit speaker count or automatic speaker detection, not both.", nameof(automaticSpeakerDetection));
         var output = paths.NewOutputDirectory(outputDirectory, source);
         var normalized = Path.Combine(output, "audio-16khz-mono.wav");
         await processes.RunAsync(Resolve("FFMPEG_EXECUTABLE", "ffmpeg"),
-            ["-nostdin", "-hide_banner", "-loglevel", "error", "-i", source, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", normalized],
+            ["-nostdin", "-hide_banner", "-loglevel", "error", "-i", source, "-vn", "-ac", speakerCount.HasValue || automaticSpeakerDetection ? "2" : "1", "-ar", "16000", "-c:a", "pcm_s16le", normalized],
             output, Timeout("VIDEOATLAS_MCP_FFMPEG_TIMEOUT_MINUTES", 30), ct);
 
         var transcript = await TranscribeNormalizedAsync(source, normalized, output, model, language, ct);
-        var segments = speakerCount.HasValue
-            ? await DiarizeAsync(normalized, transcript.Segments, speakerCount.Value, output, ct)
+        var segments = speakerCount.HasValue || automaticSpeakerDetection
+            ? await DiarizeAsync(normalized, transcript.Segments, speakerCount ?? 0, output, ct)
             : transcript.Segments;
         transcript = transcript with { Segments = segments };
         var chapters = topics.Split(segments);
@@ -59,14 +61,14 @@ public sealed class AudioAnalysisService(PathPolicy paths, ExternalProcessRunner
         await File.WriteAllTextAsync(transcriptPath, JsonSerializer.Serialize(transcript, Json), ct);
         await File.WriteAllTextAsync(srtPath, Subtitles.Format(segments), ct);
         await File.WriteAllTextAsync(topicPath, JsonSerializer.Serialize(new TopicDocument("local-context-similarity", clock.GetUtcNow(), chapters), Json), ct);
-        var manifest = new AudioAnalysisManifest(source, output, model, language, speakerCount, transcriptPath, srtPath, topicPath,
+        var manifest = new AudioAnalysisManifest(source, output, model, language, speakerCount, automaticSpeakerDetection, transcriptPath, srtPath, topicPath,
             segments.Count, chapters.Count, segments.Count == 0 ? 0 : segments.Max(item => item.End));
         await File.WriteAllTextAsync(Path.Combine(output, "analysis.json"), JsonSerializer.Serialize(manifest, Json), ct);
         return manifest;
     }
 
     public Task<AudioAnalysisManifest> TranscribeAsync(string inputPath, string? outputDirectory, string model, string? language, CancellationToken ct) =>
-        AnalyzeAsync(inputPath, outputDirectory, model, language, null, ct);
+        AnalyzeAsync(inputPath, outputDirectory, model, language, null, false, ct);
 
     public async Task<string> ExportTopicsAsync(string transcriptJsonPath, string? outputPath, CancellationToken ct)
     {
@@ -87,7 +89,7 @@ public sealed class AudioAnalysisService(PathPolicy paths, ExternalProcessRunner
 
     public async Task<string> DiarizeTranscriptAsync(string audioPath, string transcriptJsonPath, int speakerCount, string? outputPath, CancellationToken ct)
     {
-        if (speakerCount is < 2 or > 32) throw new ArgumentOutOfRangeException(nameof(speakerCount), "Speaker count must be between 2 and 32.");
+        if (speakerCount != 0 && (speakerCount < 2 || speakerCount > 32)) throw new ArgumentOutOfRangeException(nameof(speakerCount), "Speaker count must be 0 for automatic detection or between 2 and 32.");
         var audio = ValidateMedia(audioPath);
         var transcript = await ReadTranscriptAsync(transcriptJsonPath, ct);
         var target = paths.WriteFile(outputPath ?? Path.Combine(Path.GetDirectoryName(paths.ReadFile(transcriptJsonPath))!, "transcript-diarized.json"));
@@ -97,7 +99,7 @@ public sealed class AudioAnalysisService(PathPolicy paths, ExternalProcessRunner
         {
             var normalized = Path.Combine(workspace, "audio-16khz-mono.wav");
             await processes.RunAsync(Resolve("FFMPEG_EXECUTABLE", "ffmpeg"),
-                ["-nostdin", "-hide_banner", "-loglevel", "error", "-i", audio, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", normalized],
+                ["-nostdin", "-hide_banner", "-loglevel", "error", "-i", audio, "-vn", "-ac", "2", "-ar", "16000", "-c:a", "pcm_s16le", normalized],
                 workspace, Timeout("VIDEOATLAS_MCP_FFMPEG_TIMEOUT_MINUTES", 30), ct);
             var segments = await DiarizeAsync(normalized, transcript.Segments, speakerCount, workspace, ct);
             await File.WriteAllTextAsync(target, JsonSerializer.Serialize(transcript with { Segments = segments }, Json), ct);

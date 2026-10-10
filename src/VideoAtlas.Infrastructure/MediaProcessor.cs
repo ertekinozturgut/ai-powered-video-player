@@ -72,7 +72,9 @@ public sealed partial class MediaProcessor(IMediaStorage files, IOptions<Storage
             !disposition.TryGetProperty("attached_pic", out var attached) || attached.GetInt32() != 1;
     }
 
-    public Task<string?> AudioAsync(Guid id, double start, double duration, CancellationToken ct) => AudioWindowAsync(id, start, duration, "audio.mp3", ct);
+    public Task<string?> AudioAsync(Guid id, double start, double duration, CancellationToken ct) => AudioAsync(id, start, duration, false, ct);
+    public Task<string?> AudioAsync(Guid id, double start, double duration, bool preserveChannels, CancellationToken ct) =>
+        AudioWindowAsync(id, start, duration, "audio.mp3", ct, preserveChannels);
 
     public async Task<IReadOnlyList<SilenceInterval>> TranscriptionWindowsAsync(Guid id, double duration, CancellationToken ct)
     {
@@ -117,7 +119,8 @@ public sealed partial class MediaProcessor(IMediaStorage files, IOptions<Storage
     [GeneratedRegex(@"lavfi\.silence_(start|end)=([0-9.]+)", RegexOptions.CultureInvariant, 100)]
     private static partial Regex SilencePattern();
 
-    public async Task<string?> AudioWindowAsync(Guid id, double start, double duration, string filename, CancellationToken ct)
+    public async Task<string?> AudioWindowAsync(Guid id, double start, double duration, string filename, CancellationToken ct,
+        bool preserveChannels = false)
     {
         var video = files.PathFor(id, "video.mp4");
         var raw = await RunAsync("ffprobe", ["-v", "error", "-select_streams", "a", "-show_entries", "stream=index", "-of", "json", video], ct);
@@ -125,7 +128,8 @@ public sealed partial class MediaProcessor(IMediaStorage files, IOptions<Storage
         if (json.RootElement.GetProperty("streams").GetArrayLength() == 0) return null;
         var path = files.PathFor(id, filename);
         await RunAsync("ffmpeg", ["-nostdin", "-y", "-v", "error", "-ss", start.ToString(CultureInfo.InvariantCulture), "-i", video,
-            "-t", duration.ToString(CultureInfo.InvariantCulture), "-vn", "-af", "highpass=f=80,lowpass=f=7600,loudnorm=I=-16:TP=-1.5:LRA=11", "-ac", "1", "-ar", "16000", "-b:a", "48k", "-threads", "1", path], ct);
+            "-t", duration.ToString(CultureInfo.InvariantCulture), "-vn", "-af", "highpass=f=80,lowpass=f=7600,loudnorm=I=-16:TP=-1.5:LRA=11",
+            "-ac", preserveChannels ? "2" : "1", "-ar", "16000", "-b:a", preserveChannels ? "96k" : "48k", "-threads", "1", path], ct);
         return path;
     }
 

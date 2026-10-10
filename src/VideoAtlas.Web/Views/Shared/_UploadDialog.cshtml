@@ -9,7 +9,7 @@
         <fieldset class="speaker-analysis-options">
             <legend>Konuşmacı analizi</legend>
             <label class="check-label"><input id="upload-diarization" name="speakerDiarization" type="checkbox" value="true" /><span>Konuşmacıları ayırarak metne çevir</span></label>
-            <div id="upload-speaker-count-field" hidden><label for="upload-speaker-count">Konuşmacı sayısı</label><input id="upload-speaker-count" name="speakerCount" type="number" min="2" max="32" value="2" class="form-control" disabled required /><small class="muted">2–32 arasında, videoda konuşan toplam kişi sayısını girin.</small></div>
+            <div id="upload-speaker-count-field" hidden><label for="upload-speaker-count">Konuşmacı sayısı (isteğe bağlı)</label><input id="upload-speaker-count" name="speakerCount" type="number" min="2" max="32" placeholder="Otomatik tespit" class="form-control" disabled /><small class="muted">Boş bırakırsanız sistem ses benzerliği, frekans ve stereo kanal ayrımından konuşmacı sayısını otomatik tahmin eder. İsterseniz 2–32 arasında sabitleyebilirsiniz.</small></div>
             <small class="muted">Konuşmacı ayrımı etkin STT sağlayıcısı tarafından desteklenmelidir ve ek ücret doğurabilir.</small>
         </fieldset>
         <details class="context-fields"><summary>Videoya özel terimler ve analiz yönergeleri (isteğe bağlı)</summary>

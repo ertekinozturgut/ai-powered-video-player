@@ -8,6 +8,7 @@ public sealed record AudioAnalysisManifest(
     string Model,
     string? Language,
     int? SpeakerCount,
+    bool AutomaticSpeakerDetection,
     string TranscriptJson,
     string Srt,
     string TopicsJson,

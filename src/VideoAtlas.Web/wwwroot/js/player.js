@@ -110,8 +110,8 @@ function renderTranscript() {
     const actions = element('div', 'segment-actions');
     if (detail.uncertainSegmentIds?.includes(segment.id)) {
       actions.append(element('span', 'review-badge', 'İnceleme gerekli'));
-      if (!embedded) { const inspect = element('button', 'inline-edit inline-inspect', 'AI öner'); inspect.type = 'button'; inspect.title = 'AI ile incele ve doğru alternatif öner'; inspect.setAttribute('aria-label', inspect.title); inspect.addEventListener('click', () => review?.inspectSegment(segment.id)); actions.append(inspect); }
     }
+    if (!embedded) { const inspect = element('button', 'inline-edit inline-inspect', 'AI ile düzelt'); inspect.type = 'button'; inspect.title = 'Konuşmayı genel bağlamla AI üzerinden incele ve düzeltme öner'; inspect.setAttribute('aria-label', inspect.title); inspect.addEventListener('click', () => review?.inspectSegment(segment.id)); actions.append(inspect); }
     if (!embedded) actions.append(editButton('Metni ve zamanı düzenle', () => openTranscriptEdit(segment)));
     if (actions.children.length) row.append(actions);
     list.append(row);
@@ -260,7 +260,7 @@ if (!embedded) {
     }
     $('#speaker-name-error').textContent = '';
     reanalysisDiarization.checked = detail.speakerDiarization;
-    $('#reanalysis-speaker-count').value = detail.expectedSpeakerCount ?? Math.max(2, speakers.length || 2);
+    $('#reanalysis-speaker-count').value = detail.expectedSpeakerCount ?? '';
     $('#reanalysis-warning').hidden = !ready;
     $('#reanalysis-submit').textContent = ready ? 'Tam yeniden analizi başlat' : 'Analizi bu ayarlarla başlat';
     updateSpeakerCount(); speakerDialog.showModal();
@@ -288,11 +288,12 @@ if (!embedded) {
     event.preventDefault(); const button = $('#reanalysis-submit'); button.disabled = true; $('#reanalysis-error').textContent = '';
     try {
       const enabled = reanalysisDiarization.checked;
-      const speakerCount = enabled ? Number($('#reanalysis-speaker-count').value) : null;
-      if (enabled && (!Number.isInteger(speakerCount) || speakerCount < 2 || speakerCount > 32)) throw new Error(errors.invalid_speaker_count);
+      const speakerCountText = $('#reanalysis-speaker-count').value.trim();
+      const speakerCount = enabled && speakerCountText ? Number(speakerCountText) : null;
+      if (enabled && speakerCount !== null && (!Number.isInteger(speakerCount) || speakerCount < 2 || speakerCount > 32)) throw new Error(errors.invalid_speaker_count);
       await api(`${base}/reanalyze`, {method:'POST', body:JSON.stringify({speakerDiarization:enabled, speakerCount})});
       speakerDialog.close(); clearTimeout(timer); await load();
-      toast(enabled ? 'Konuşmacı ayrımlı tam analiz başlatıldı.' : 'Konuşmacı ayrımı olmadan tam analiz başlatıldı.');
+      toast(enabled ? (speakerCount === null ? 'Konuşmacı sayısı otomatik tespit edilerek tam analiz başlatıldı.' : 'Konuşmacı ayrımlı tam analiz başlatıldı.') : 'Konuşmacı ayrımı olmadan tam analiz başlatıldı.');
     } catch (error) { $('#reanalysis-error').textContent = error.message; }
     finally { button.disabled = false; updateSpeakerCount(); }
   });

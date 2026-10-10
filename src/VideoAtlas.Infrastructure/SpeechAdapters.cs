@@ -101,8 +101,8 @@ public sealed class LocalWhisperSpeechAdapter(ILogger<LocalWhisperSpeechAdapter>
     private async Task<IReadOnlyList<TranscriptSegment>> DiarizeAsync(string audioPath, double offset,
         IReadOnlyList<TranscriptSegment> segments, int? speakerCount, string workingDirectory, CancellationToken ct)
     {
-        if (speakerCount is not (>= 2 and <= 32))
-            throw new AppException(400, "invalid_speaker_count", "Konuşmacı sayısı 2–32 arasında olmalıdır.");
+        if (speakerCount is not null and not (>= 2 and <= 32))
+            throw new AppException(400, "invalid_speaker_count", "Konuşmacı sayısı otomatik veya 2–32 arasında olmalıdır.");
         var script = Path.Combine(AppContext.BaseDirectory, "local_speaker_diarization.py");
         if (!File.Exists(script))
             throw new AppException(409, "local_diarization_unavailable", "Yerel konuşmacı ayrımı bileşeni bulunamadı. Uygulamayı yeniden yayımlayın.");
@@ -116,14 +116,18 @@ public sealed class LocalWhisperSpeechAdapter(ILogger<LocalWhisperSpeechAdapter>
         })), ct);
         var start = new ProcessStartInfo
         {
-            FileName = ResolvePythonExecutable(), WorkingDirectory = workingDirectory, UseShellExecute = false,
-            RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true
+            FileName = ResolvePythonExecutable(),
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
         };
         start.Environment["PYTHONIOENCODING"] = "utf-8";
         start.ArgumentList.Add(script);
         start.ArgumentList.Add("--audio"); start.ArgumentList.Add(audioPath);
         start.ArgumentList.Add("--segments"); start.ArgumentList.Add(input);
-        start.ArgumentList.Add("--speaker-count"); start.ArgumentList.Add(speakerCount.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        start.ArgumentList.Add("--speaker-count"); start.ArgumentList.Add((speakerCount ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture));
         start.ArgumentList.Add("--output"); start.ArgumentList.Add(output);
         using var process = Process.Start(start) ?? throw new AppException(409, "local_diarization_unavailable", "Yerel konuşmacı ayrımı başlatılamadı.");
         var stdout = process.StandardOutput.ReadToEndAsync(ct);

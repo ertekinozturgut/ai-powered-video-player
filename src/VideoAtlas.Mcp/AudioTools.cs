@@ -21,8 +21,9 @@ public static class AudioTools
         [Description("Local Whisper model: tiny, base, small, medium, large, turbo, large-v3, or large-v3-turbo.")] string model = "large-v3-turbo",
         [Description("Optional ISO language code, for example tr or en. Omit for automatic detection.")] string? language = null,
         [Description("Optional expected speaker count from 2 to 32. Omit to skip speaker separation.")] int? speakerCount = null,
+        [Description("Detect the speaker count automatically from voice, frequency, and channel evidence.")] bool automaticSpeakerDetection = false,
         CancellationToken cancellationToken = default) =>
-        JsonSerializer.Serialize(await service.AnalyzeAsync(inputPath, outputDirectory, model, language, speakerCount, cancellationToken), Json);
+        JsonSerializer.Serialize(await service.AnalyzeAsync(inputPath, outputDirectory, model, language, speakerCount, automaticSpeakerDetection, cancellationToken), Json);
 
     [McpServerTool(Name = "transcribe_audio"), Description("Transcribes an allowed local audio or video file with local Whisper and creates timestamped transcript JSON, SRT, and local topic files without speaker separation.")]
     public static async Task<string> TranscribeAudio(
@@ -39,7 +40,7 @@ public static class AudioTools
         AudioAnalysisService service,
         [Description("Absolute path to the original audio or video file.")] string audioPath,
         [Description("Absolute path to transcript.json created by this MCP server.")] string transcriptJsonPath,
-        [Description("Expected number of speakers, from 2 to 32.")] int speakerCount,
+        [Description("Expected number of speakers from 2 to 32, or 0 for automatic detection.")] int speakerCount,
         [Description("Optional output JSON path. Defaults to transcript-diarized.json next to the input transcript.")] string? outputPath = null,
         CancellationToken cancellationToken = default) =>
         service.DiarizeTranscriptAsync(audioPath, transcriptJsonPath, speakerCount, outputPath, cancellationToken);

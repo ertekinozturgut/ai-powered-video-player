@@ -122,6 +122,14 @@ Gerçek tarayıcıdan alınan güncel görseller:
 - Yerel makinede FFmpeg, Whisper, Python, Torch, Resemblyzer, librosa ve scikit-learn import/varlık kontrolü geçti. Bu doğrulama gerçek insan konuşmasında WER veya konuşmacı doğruluğu ölçümü değildir.
 - Tam çözüm test çalıştırması denendi; MCP testleri geçti ancak mevcut web testlerinin paralel SQLite/`instance.lock` temizleme çakışmaları ve iki mevcut HTTP durum beklentisi nedeniyle tüm paket yeşil raporlanmadı. Bu hatalar MCP odaklı testlerde oluşmadı.
 
+## Otomatik konuşmacı ve konuşma bağlamı incelemesi — 10 Ekim 2026
+
+- Debug çözüm derlemesi **0 uyarı, 0 hata**; Web ve MCP Release publish işlemleri başarılı tamamlandı. `player.js` Node sözdizimi ve yerel konuşmacı Python modülü `py_compile` kontrolünden geçti.
+- Otomatik konuşmacı sayısı doğrulaması, konuşma bağlamı profilinin hedefli AI incelemesine aktarılması, yetersiz kanıtın reddi, eski bağlam veri sözleşmesi, hatalı AI yanıtının kapalı davranması ve MCP kontrolleri için odaklı .NET testleri **9 geçti, 0 başarısız**.
+- Yerel Python smoke testinde sentetik iki kümeli özellik matrisi iki konuşmacı olarak seçildi ve kümelendi. Bu kontrol gerçek insan sesi diarization doğruluğu veya konuşmacı kimliği ölçümü değildir.
+- Tam .NET paketinde **85 test geçti**. Kalan 21 sonuçtan 18'i mevcut WebApplicationFactory SQLite/`instance.lock` temizleme yarışı, üçü önceden kayıtlı HTTP durum/iş kuyruğu beklentileridir; yeni odaklı testlerde hata oluşmadı.
+- AI bağlam profili yalnızca transkript içindeki tekrarlar ve kullanıcı sözlüğünden kanıt üretir; sesi dinlediğini veya dış dünyadaki yazımın doğru olduğunu iddia etmez. Öneriler kullanıcı ses doğrulaması olmadan metne uygulanmaz. Otomatik konuşmacı sayısı en fazla sekiz kümeyi değerlendirir; benzer/örtüşen seslerde sabit kişi sayısı kullanılmalıdır.
+
 ## Güncel dış doğrulama gereksinimleri
 
 - **Canlı OpenAI:** kullanılabilir `Ai__ApiKey` yoktu. Gerçek konuşma tanıma doğruluğu, gerçek sağlayıcı model/hesap erişimi, ücretler ve cevapların anlamsal doğruluğu canlı hesapla doğrulanmadı. Kontrollü testleri canlı AI testi olarak değerlendirmeyin.
