@@ -25,11 +25,11 @@ public sealed class VideoLibrary(IVideoStore videos, ILibraryStore library, IMed
     // Caller holds MutationGate for mutations. Upload is serialised to make quota check + insertion atomic.
     public async Task<VideoSummary> UploadAsync(UploadCommand command, CancellationToken ct)
     {
-        if (!command.Consent) throw new AppException(400, "consent_required", "Video işleme ve varsa AI hizmetine aktarım için onay gereklidir.");
+        if (!command.Consent) throw new AppException(400, "consent_required", "Medya işleme ve varsa AI hizmetine aktarım için onay gereklidir.");
         if (string.IsNullOrWhiteSpace(command.Title) || command.Title.Length > 180)
             throw new AppException(400, "invalid_title", "Başlık 1–180 karakter olmalıdır.");
         if (command.Length <= 0 || command.Length > limits.MaxUploadBytes)
-            throw new AppException(413, "upload_limit", "Video boş veya 512 MiB yükleme sınırını aşıyor.");
+            throw new AppException(413, "upload_limit", "Dosya boş veya 512 MiB yükleme sınırını aşıyor.");
         if (await library.UsedBytesAsync(command.Owner, ct) + command.Length > limits.UserQuotaBytes)
             throw new AppException(409, "storage_quota", "Kütüphane kotanız doldu. Önce eski videolardan bazılarını silin.");
         var video = new Video(Guid.NewGuid(), command.Owner, command.Title.Trim(), command.Length, clock.GetUtcNow());
@@ -73,7 +73,7 @@ public sealed class VideoLibrary(IVideoStore videos, ILibraryStore library, IMed
     public async Task ImportAsync(Video video, string srt, CancellationToken ct)
     {
         VideoAccess.RequireIdle(video);
-        if (!video.MediaReady) throw new AppException(409, "media_not_ready", "Önce video dosyasının hazırlanması gerekiyor.");
+        if (!video.MediaReady) throw new AppException(409, "media_not_ready", "Önce medya dosyasının hazırlanması gerekiyor.");
         var segments = Subtitles.Parse(srt, video.Duration);
         video.RecordTranscript(segments, clock.GetUtcNow(), "SRT içe aktarma");
         video.Complete(segments, TranscriptSearch.LocalChapters(segments), "keywords");

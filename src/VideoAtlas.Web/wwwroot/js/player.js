@@ -24,6 +24,10 @@ function render() {
   ready = v.status === 'Ready';
   const busy = ['Queued', 'Processing'].includes(v.status);
   $('#video-heading').textContent = v.title; document.title = `${v.title} · VideoAtlas`;
+  const audioOnly = v.mediaKind === 'audio';
+  $('#workspace-kind').textContent = audioOnly ? 'SES ÇALIŞMA ALANI' : 'VİDEO ÇALIŞMA ALANI';
+  $('#media-frame').classList.toggle('audio-mode', audioOnly);
+  video.setAttribute('aria-label', audioOnly ? 'Ses oynatıcı' : 'Video oynatıcı');
   $('#video-duration').textContent = time(v.duration);
   $('#total-time').textContent = time(v.duration);
   $('#video-status').textContent = stateNames[v.status];
@@ -82,12 +86,14 @@ function render() {
     $('#delete-video').disabled = busy;
     $('#srt-file').disabled = busy || !v.mediaReady;
   }
-  $('#segment-count').textContent = detail.segments.length ? `${detail.segments.length} konuşma` : '';
+  $('#segment-count').textContent = detail.segments.length
+    ? `${detail.segments.length} ${document.documentElement.lang.startsWith('en') ? 'segments' : 'konuşma'}`
+    : '';
   renderTranscript(); renderChapters();
 }
 function seek(seconds) {
   if (!sourceSet) return;
-  const jump = () => { video.currentTime = Math.min(seconds, Number.isFinite(video.duration) ? video.duration : seconds); video.play().catch(() => toast('Oynatmak için video üzerindeki başlat düğmesine basın.')); };
+  const jump = () => { video.currentTime = Math.min(seconds, Number.isFinite(video.duration) ? video.duration : seconds); video.play().catch(() => toast('Oynatmak için medya oynatıcısındaki başlat düğmesine basın.')); };
   if (video.readyState) jump(); else video.addEventListener('loadedmetadata', jump, {once: true});
 }
 function renderTranscript() {

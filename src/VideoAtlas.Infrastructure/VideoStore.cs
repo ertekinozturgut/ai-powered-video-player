@@ -14,7 +14,7 @@ public sealed class VideoStore(AppDbContext db, TimeProvider clock) : IVideoStor
     public async Task<IReadOnlyList<VideoSummary>> ListAsync(string ownerId, int page, CancellationToken ct) =>
         await db.Videos.AsNoTracking().Where(v => v.OwnerId == ownerId).OrderByDescending(v => v.CreatedAt)
             .Skip(Math.Clamp(page, 0, 10000) * 24).Take(24)
-            .Select(v => new VideoSummary(v.Id, v.Title, v.CreatedAt, v.Status, v.Stage, v.Progress, v.Duration, v.MediaReady, v.ErrorCode))
+            .Select(v => new VideoSummary(v.Id, v.Title, v.CreatedAt, v.Status, v.Stage, v.Progress, v.Duration, v.MediaReady, v.ErrorCode, v.MediaKind))
             .ToListAsync(ct);
     public async Task AddAsync(Video video, CancellationToken ct) { db.Videos.Add(video); await db.SaveChangesAsync(ct); }
     public async Task SaveAsync(CancellationToken ct) => await db.SaveChangesAsync(ct);

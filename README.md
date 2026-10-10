@@ -52,6 +52,7 @@ Gerçek arayüzden kullanım demosunu yeniden üretmek için [demo kayıt kılav
 - `src/VideoAtlas.Application`: erişim, kütüphane, SRT, arama ve kaynak doğrulamalı sohbet.
 - `src/VideoAtlas.Infrastructure`: SQLite/Identity, FFmpeg, bağımsız AI adaptörleri/factory, şifreli sağlayıcı ayarları ve kalıcı işçi.
 - `src/VideoAtlas.Web`: Razor, JSON API, oturum/CSRF, responsive JavaScript arayüzü.
+- `src/VideoAtlas.Mcp`: Windows/Linux üzerinde stdio ile çalışan yerel ses analiz MCP sunucusu; Whisper transkripsiyonu, konuşmacı ayrımı, yerel konu bölümlendirme ve SRT üretimi. Kurulum ve istemci örnekleri: [MCP kılavuzu](docs/MCP.md).
 - `tests`: xUnit, gerçek assembly mimari kontrolleri, API/FFmpeg ve Playwright testleri. Varsayılan tarayıcı testleri 5090/5091 portlarında ayrı geçici verilerle, canlı anahtarlardan yalıtılmış çalışır.
 - `vendor/agent-squad`: kullanılan kaynak sürümü ve lisansı.
 

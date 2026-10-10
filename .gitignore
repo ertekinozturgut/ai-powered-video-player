@@ -2,9 +2,12 @@
 **/obj/
 **/node_modules/
 **/__pycache__/
+.venv-mcp/
 *.py[cod]
 **/TestResults/
 **/playwright-report/
+.playwright-cli/
+output/
 .vs/
 .env
 .env.*

@@ -43,6 +43,14 @@ public sealed partial class LocalizationTests : IClassFixture<VideoAppFactory>
         Assert.Equal("Video library", catalog.Texts["Video kütüphanesi"]);
         Assert.Equal("Speaker analysis", catalog.Texts["Konuşmacı analizi"]);
         Assert.Equal("Convert to speaker-separated", catalog.Texts["Konuşmacılıya çevir"]);
+        Assert.Equal("DISCOVER MORE", catalog.Texts["DAHA FAZLASINI KEŞFEDİN"]);
+        Assert.Equal("Share and embed on your site", catalog.Texts["Paylaş ve sitene göm"]);
+        Assert.Equal("Transcript quality review", catalog.Texts["Transkript kalite kontrolü"]);
+        Assert.Equal("Speech to text", catalog.Texts["Konuşmayı metne çevirme"]);
+        Assert.Equal("MULTILINGUAL CATALOG", catalog.Texts["ÇOK DİLLİ KATALOG"]);
+        Assert.Equal("System administration", catalog.Texts["Sistem yönetimi"]);
+        Assert.Equal("No matching users found.", catalog.Texts["Eşleşen kullanıcı bulunamadı."]);
+        Assert.Equal("Media analysis could not be completed. Try again or upload an SRT file.", catalog.Texts["Medya analizi tamamlanamadı. Yeniden deneyebilir veya SRT yükleyebilirsiniz."]);
         Assert.Contains("no-store", (await client.GetAsync("/api/localization")).Headers.CacheControl?.ToString());
     }
 

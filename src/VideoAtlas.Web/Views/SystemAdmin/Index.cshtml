@@ -1,0 +1,61 @@
+@model SystemAdminDashboardView
+@inject VideoAtlas.Application.ILocalizationAdministration Catalog
+@{
+    ViewData["Title"] = "Sistem yönetimi";
+    static string StatusClass(VideoAtlas.Domain.VideoStatus status) => status.ToString().ToLowerInvariant();
+    var owner = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    var english = await Catalog.ResolveLanguageAsync(owner, Context.Request.Cookies["VideoAtlas.Language"], Context.RequestAborted) == "en";
+    string Dynamic(string value) => !english ? value : value switch
+    {
+        "Aktif" => "Active", "Kilitli" => "Locked", "E-posta doğrulandı" => "Email verified", "E-posta doğrulanmadı" => "Email not verified",
+        "Yönetici" => "Administrator", "Kullanıcı" => "User", "Analiz tamamlandı" => "Analysis completed",
+        "SRT yükleyin veya AI yapılandırıldıktan sonra yeniden işleyin" => "Upload an SRT file or reprocess after AI is configured.",
+        "Video ve ses hazırlanıyor" => "Preparing video and audio", "İş" => "Job", "kod yok" => "no code", _ => value
+    };
+}
+@section Styles { <link rel="stylesheet" href="/css/system-admin.css" asp-append-version="true" /> }
+
+<header class="topbar"><span>Yönetim <span class="slash">/</span> <strong>Sistem yönetimi</strong></span><span class="security-pill">Yalnızca yönetici</span></header>
+<div class="workspace-content system-admin-page">
+    <div class="page-heading admin-heading">
+        <div><span class="eyebrow">YÖNETİM MERKEZİ</span><h1>Sistem yönetimi<span class="accent-dot">.</span></h1><p class="muted">Hesapları, içerikleri, iş kuyruğunu ve güvenli hata kayıtlarını tek ekrandan izleyin.</p></div>
+        <div class="admin-heading-actions"><a class="btn btn-outline-secondary" href="/admin/operations">Kullanım ayrıntıları</a><a class="btn btn-outline-secondary" href="/admin/providers">Sağlayıcılar</a></div>
+    </div>
+
+    <section class="admin-metrics" aria-label="Sistem özeti">
+        <article><span>Toplam kullanıcı</span><strong>@Model.Summary.Users</strong><small>@(english ? $"{Model.Summary.ActiveUsers} active · {Model.Summary.LockedUsers} locked" : $"{Model.Summary.ActiveUsers} aktif · {Model.Summary.LockedUsers} kilitli")</small></article>
+        <article><span>Toplam içerik</span><strong>@Model.Summary.Videos</strong><small>@(english ? $"{Model.Summary.Ready} analyses ready" : $"{Model.Summary.Ready} analizi hazır")</small></article>
+        <article><span>Aktif iş yükü</span><strong>@(Model.Summary.Queued + Model.Summary.Processing)</strong><small>@(english ? $"{Model.Summary.Queued} queued · {Model.Summary.Processing} processing" : $"{Model.Summary.Queued} kuyrukta · {Model.Summary.Processing} çalışıyor")</small></article>
+        <article><span>İnceleme gereken</span><strong>@(Model.Summary.Failed + Model.Summary.AwaitingTranscript)</strong><small>@(english ? $"{Model.Summary.Failed} failed · {Model.Summary.AwaitingTranscript} awaiting transcript" : $"{Model.Summary.Failed} hatalı · {Model.Summary.AwaitingTranscript} metin bekliyor")</small></article>
+    </section>
+
+    <section class="provider-panel admin-filter-panel">
+        <form method="get" action="/admin/system" class="admin-filter-form">
+            <label><span>Kullanıcı veya içerik ara</span><input type="search" name="q" value="@Model.Query" maxlength="120" placeholder="E-posta, görünen ad veya video adı" /></label>
+            <label><span>İş durumu</span><select name="status"><option value="">Tüm durumlar</option>@foreach (var item in Enum.GetValues<VideoAtlas.Domain.VideoStatus>()) { <option value="@item" selected="@(Model.Status.Equals(item.ToString(), StringComparison.OrdinalIgnoreCase))">@item</option> }</select></label>
+            <button class="btn" type="submit">Filtrele</button><a class="btn btn-outline-secondary" href="/admin/system">Temizle</a>
+        </form>
+    </section>
+
+    <section class="provider-panel admin-section">
+        <div class="admin-section-heading"><div><span class="eyebrow">HESAPLAR</span><h2>Kullanıcılar</h2><p class="muted">En fazla 100 eşleşme gösterilir. Parolalar hiçbir zaman görüntülenmez.</p></div><span class="count-badge">@(english ? $"{Model.Users.Count} records" : $"{Model.Users.Count} kayıt")</span></div>
+        @if (Model.Users.Count == 0) { <div class="admin-empty">Eşleşen kullanıcı bulunamadı.</div> }
+        else { <div class="table-responsive"><table class="admin-table"><thead><tr><th>Hesap</th><th>Durum</th><th>Yetki</th><th>İçerik</th><th>Analiz sonucu</th><th>Son yükleme</th></tr></thead><tbody>
+        @foreach (var user in Model.Users) { <tr><td data-label="Hesap"><strong>@user.Email</strong>@if (!string.IsNullOrWhiteSpace(user.DisplayName)) { <small>@user.DisplayName</small> }</td><td data-label="Durum"><span class="state-pill @(user.Status == "Kilitli" ? "state-danger" : "state-success")">@Dynamic(user.Status)</span><small>@Dynamic(user.EmailConfirmed ? "E-posta doğrulandı" : "E-posta doğrulanmadı")</small></td><td data-label="Yetki">@Dynamic(user.IsAdministrator ? "Yönetici" : "Kullanıcı")</td><td data-label="İçerik"><strong>@user.VideoCount</strong><small>@(english ? $"{user.TotalMinutes:F1} minutes" : $"{user.TotalMinutes:F1} dakika")</small></td><td data-label="Analiz sonucu"><span class="state-success-text">@(english ? $"{user.ReadyCount} ready" : $"{user.ReadyCount} hazır")</span><small class="state-danger-text">@(english ? $"{user.FailedCount} failed" : $"{user.FailedCount} hatalı")</small></td><td data-label="Son yükleme">@(user.LastUploadAt?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "—")</td></tr> }
+        </tbody></table></div> }
+    </section>
+
+    <section class="provider-panel admin-section">
+        <div class="admin-section-heading"><div><span class="eyebrow">İÇERİK VE KUYRUK</span><h2>Medya analizleri</h2><p class="muted">Transkript ve işlem ayrıntılarını incelemek için içerik adına tıklayın.</p></div><span class="count-badge">@(english ? $"{Model.Videos.Count} records" : $"{Model.Videos.Count} kayıt")</span></div>
+        @if (Model.Videos.Count == 0) { <div class="admin-empty">Eşleşen içerik bulunamadı.</div> }
+        else { <div class="table-responsive"><table class="admin-table admin-video-table"><thead><tr><th>İçerik</th><th>Sahibi</th><th>Durum</th><th>Aşama</th><th>Metin</th><th>Oluşturma</th></tr></thead><tbody>
+        @foreach (var video in Model.Videos) { <tr><td data-label="İçerik"><a href="/admin/system/videos/@video.Id">@video.Title</a><small>@video.Duration.ToString("F0") @(english ? "sec" : "sn") · @video.AnalysisLanguage.ToUpperInvariant() · @video.AnalysisMode</small></td><td data-label="Sahibi">@video.OwnerEmail</td><td data-label="Durum"><span class="job-status job-status-@StatusClass(video.Status)">@video.Status</span><small>%@video.Progress · @(english ? $"{video.Attempts} attempts" : $"{video.Attempts} deneme")</small></td><td data-label="Aşama">@Dynamic(video.Stage)@if (!string.IsNullOrWhiteSpace(video.ErrorCode)) { <code>@video.ErrorCode</code> }</td><td data-label="Metin">@(english ? $"{video.SegmentCount} segments" : $"{video.SegmentCount} parça")<small>@(english ? $"{video.ChapterCount} chapters · {(video.SpeakerDiarization ? "speaker-separated" : "single stream")}" : $"{video.ChapterCount} bölüm · {(video.SpeakerDiarization ? "konuşmacılı" : "tek akış")}")</small></td><td data-label="Oluşturma">@video.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td></tr> }
+        </tbody></table></div> }
+    </section>
+
+    <section class="provider-panel admin-section">
+        <div class="admin-section-heading"><div><span class="eyebrow">HATA GÖRÜNÜRLÜĞÜ</span><h2>Son hata ve belirsiz işlemler</h2><p class="muted">Gizli veri ve ham exception yerine güvenli hata kodları gösterilir.</p></div><span class="count-badge">@(english ? $"{Model.Errors.Count} records" : $"{Model.Errors.Count} kayıt")</span></div>
+        @if (Model.Errors.Count == 0) { <div class="admin-empty admin-empty-success">Kayıtlı bir hata bulunmuyor.</div> }
+        else { <div class="error-feed">@foreach (var error in Model.Errors) { <article><div class="error-source">@Dynamic(error.Source)</div><div><a href="/admin/system/videos/@error.VideoId">@error.VideoTitle</a><p>@Dynamic(error.Detail)</p><small>@error.OwnerEmail · @error.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</small></div><div class="error-code"><span>@error.Status</span><code>@(error.ErrorCode ?? Dynamic("kod yok"))</code>@if (error.Milliseconds is > 0) { <small>@error.Milliseconds.Value.ToString("F0") ms</small> }</div></article> }</div> }
+    </section>
+</div>

@@ -266,6 +266,11 @@ namespace VideoAtlas.Infrastructure.Migrations
                     b.Property<bool>("FullReviewEnabled")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("MediaKind")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("MediaReady")
                         .HasColumnType("INTEGER");
 

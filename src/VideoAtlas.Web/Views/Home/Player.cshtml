@@ -3,14 +3,14 @@
 <div id="player-app" data-api="@Model.ApiBase" data-embedded="@Model.Embedded.ToString().ToLowerInvariant()">
     @if (!Model.Embedded) { <header class="topbar"><a href="/">← Video kütüphanesi</a><span class="security-pill">◇ Çalışma alanınız</span></header> }
     else { <header class="embed-brand"><span class="brand-mark" aria-hidden="true"></span><strong>VideoAtlas</strong><span>Video ile keşfedin</span></header> }
-    <div class="player-heading"><div><span class="eyebrow">VİDEO ÇALIŞMA ALANI</span><h1 id="video-heading">Video yükleniyor…</h1><div class="video-meta"><span id="video-duration">—</span><span id="video-status" class="status-badge">Yükleniyor</span><span id="analysis-label"></span></div></div>
+    <div class="player-heading"><div><span id="workspace-kind" class="eyebrow">MEDYA ÇALIŞMA ALANI</span><h1 id="video-heading">Medya yükleniyor…</h1><div class="video-meta"><span id="video-duration">—</span><span id="video-status" class="status-badge">Yükleniyor</span><span id="analysis-label"></span></div></div>
         <div class="heading-actions"><a id="srt-download" class="btn btn-outline-secondary disabled" aria-disabled="true">↓ SRT indir</a>@if (!Model.Embedded) { <button id="share-open" class="btn btn-primary" disabled><span class="arrow-out" aria-hidden="true"></span> Paylaş ve göm</button> }</div>
     </div>
     <div id="player-error" class="notice error" role="alert" hidden></div>
     <div id="processing-notice" class="notice processing" hidden><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><div><strong id="processing-stage"></strong><progress id="processing-progress" max="100" value="0" aria-label="Analiz ilerlemesi"></progress></div></div>
     <div class="player-grid">
         <section class="video-column" aria-label="Video ve konuşmalar">
-            <div class="video-frame"><video id="video" controls playsinline preload="metadata" aria-label="Video oynatıcı"></video><div id="video-placeholder" class="video-placeholder"><span>▷</span><p>Video hazırlanıyor</p></div></div>
+            <div id="media-frame" class="video-frame"><video id="video" controls playsinline preload="metadata" aria-label="Medya oynatıcı"></video><div id="video-placeholder" class="video-placeholder"><span>▷</span><p>Medya hazırlanıyor</p></div></div>
             <div class="video-foot"><span>◷ <span id="current-time">00:00</span> <span class="muted">/</span> <span id="total-time">00:00</span></span><span class="muted">Konuşmaya tıklayın, o ana gidin.</span></div>
             <div class="transcript-panel">
                 <div class="panel-tabs" role="tablist" aria-label="Video bilgileri"><button id="tab-transcript" role="tab" aria-selected="true" aria-controls="transcript-panel" class="selected">▤ Metin dökümü</button><button id="tab-chapters" role="tab" aria-selected="false" aria-controls="chapters-panel" tabindex="-1">◫ Konu başlıkları</button><span id="segment-count"></span></div>

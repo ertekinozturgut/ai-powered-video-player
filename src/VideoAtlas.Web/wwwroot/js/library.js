@@ -22,7 +22,7 @@ function render() {
   for (const v of filtered) {
     const link = element('a', 'video-card'); link.href = `/videos/${v.id}`;
     const cover = element('div', 'card-cover');
-    if (v.mediaReady) { const img = element('img'); img.src = `/api/videos/${v.id}/poster`; img.alt = ''; img.loading = 'lazy'; cover.append(img); }
+    if (v.mediaReady) { const img = element('img'); img.src = `/api/videos/${v.id}/poster`; img.alt = ''; img.loading = 'lazy'; cover.append(img); if (v.mediaKind === 'audio') { cover.classList.add('audio-cover'); cover.append(element('span', 'audio-cover-mark', '♫')); } }
     else cover.append(element('span', 'cover-play', '▷'));
     cover.append(element('span', 'duration-label', v.duration ? time(v.duration) : (english ? 'Preparing' : 'Hazırlanıyor')));
     const body = element('div', 'card-body');

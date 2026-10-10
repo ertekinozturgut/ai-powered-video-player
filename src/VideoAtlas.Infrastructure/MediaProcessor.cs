@@ -10,7 +10,10 @@ namespace VideoAtlas.Infrastructure;
 
 public sealed partial class MediaProcessor(IMediaStorage files, IOptions<StorageOptions> settings)
 {
-    public async Task<double> PrepareAsync(Guid id, CancellationToken ct)
+    private static readonly HashSet<string> VideoFormats = new(StringComparer.Ordinal) { "mov", "mp4", "matroska", "webm" };
+    private static readonly HashSet<string> AudioFormats = new(StringComparer.Ordinal) { "mp3", "wav", "flac", "ogg", "opus", "aac", "aiff", "asf", "mov", "mp4", "matroska", "webm" };
+
+    public async Task<MediaPreparation> PrepareAsync(Guid id, CancellationToken ct)
     {
         var source = files.PathFor(id, "source.bin");
         var target = files.PathFor(id, "video.mp4");
@@ -18,31 +21,55 @@ public sealed partial class MediaProcessor(IMediaStorage files, IOptions<Storage
         var raw = await RunAsync("ffprobe", ["-v", "error", "-protocol_whitelist", "file,pipe", "-show_format", "-show_streams", "-of", "json", input], ct);
         using var json = JsonDocument.Parse(raw);
         var streams = json.RootElement.GetProperty("streams").EnumerateArray().ToArray();
-        if (!streams.Any(s => s.GetProperty("codec_type").GetString() == "video")) throw new MediaException("invalid_video");
-        var picture = streams.First(s => s.GetProperty("codec_type").GetString() == "video");
-        var width = picture.GetProperty("width").GetInt32();
-        var height = picture.GetProperty("height").GetInt32();
-        if (width is <= 0 or > 8192 || height is <= 0 or > 8192 || (long)width * height > 16_777_216)
-            throw new MediaException("resolution_limit");
+        var visualStreams = streams.Where(IsVisualVideo).ToArray();
+        var hasVideo = visualStreams.Length > 0;
+        var hasAudio = streams.Any(s => s.GetProperty("codec_type").GetString() == "audio");
+        if (!hasVideo && !hasAudio) throw new MediaException("invalid_media");
+        if (hasVideo)
+        {
+            var picture = visualStreams[0];
+            var width = picture.GetProperty("width").GetInt32();
+            var height = picture.GetProperty("height").GetInt32();
+            if (width is <= 0 or > 8192 || height is <= 0 or > 8192 || (long)width * height > 16_777_216)
+                throw new MediaException("resolution_limit");
+        }
         var duration = double.Parse(json.RootElement.GetProperty("format").GetProperty("duration").GetString()!, CultureInfo.InvariantCulture);
         if (!double.IsFinite(duration) || duration is <= 0 || duration > settings.Value.MaxDurationSeconds) throw new MediaException("duration_limit");
         var format = json.RootElement.GetProperty("format").GetProperty("format_name").GetString() ?? "";
-        if (!format.Split(',').Any(f => f is "mov" or "mp4" or "matroska" or "webm")) throw new MediaException("invalid_video");
+        var formats = format.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (!formats.Any((hasVideo ? VideoFormats : AudioFormats).Contains)) throw new MediaException("invalid_media");
         if (!File.Exists(target))
         {
             var temporary = files.PathFor(id, "video.processing.mp4");
-            await RunAsync("ffmpeg", ["-nostdin", "-y", "-v", "error", "-protocol_whitelist", "file,pipe", "-threads", "2", "-i", input,
-                "-map", "0:v:0", "-map", "0:a:0?", "-map_metadata", "-1", "-vf", "scale=w='min(1280,iw)':h='min(720,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2", "-c:v", "libx264", "-threads", "2",
-                "-preset", "veryfast", "-crf", "23", "-maxrate", "2000k", "-bufsize", "4000k", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k", "-fs", "1073741824", "-movflags", "+faststart", temporary], ct);
+            var arguments = hasVideo
+                ? new[] { "-nostdin", "-y", "-v", "error", "-protocol_whitelist", "file,pipe", "-threads", "2", "-i", input,
+                    "-map", "0:v:0", "-map", "0:a:0?", "-map_metadata", "-1", "-vf", "scale=w='min(1280,iw)':h='min(720,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2", "-c:v", "libx264", "-threads", "2",
+                    "-preset", "veryfast", "-crf", "23", "-maxrate", "2000k", "-bufsize", "4000k", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k", "-fs", "1073741824", "-movflags", "+faststart", temporary }
+                : new[] { "-nostdin", "-y", "-v", "error", "-protocol_whitelist", "file,pipe", "-threads", "1", "-i", input,
+                    "-map", "0:a:0", "-map_metadata", "-1", "-vn", "-c:a", "aac", "-b:a", "96k", "-ar", "48000", "-ac", "2",
+                    "-fs", "1073741824", "-movflags", "+faststart", temporary };
+            await RunAsync("ffmpeg", arguments, ct);
             var outputDuration = await RunAsync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", temporary], ct);
             if (!double.TryParse(outputDuration.Trim(), CultureInfo.InvariantCulture, out var actualDuration) || actualDuration < duration - 1)
             { File.Delete(temporary); throw new MediaException("output_size_limit"); }
             File.Move(temporary, target, true);
         }
         if (!File.Exists(files.PathFor(id, "poster.jpg")))
-            await RunAsync("ffmpeg", ["-nostdin", "-y", "-v", "error", "-i", target, "-frames:v", "1", "-vf", "scale=640:-2", "-threads", "1", files.PathFor(id, "poster.jpg")], ct);
+        {
+            if (hasVideo)
+                await RunAsync("ffmpeg", ["-nostdin", "-y", "-v", "error", "-i", target, "-frames:v", "1", "-vf", "scale=640:-2", "-threads", "1", files.PathFor(id, "poster.jpg")], ct);
+            else
+                await RunAsync("ffmpeg", ["-nostdin", "-y", "-v", "error", "-f", "lavfi", "-i", "color=c=0x11121a:s=640x360", "-frames:v", "1", "-threads", "1", files.PathFor(id, "poster.jpg")], ct);
+        }
         if (File.Exists(source)) File.Delete(source);
-        return duration;
+        return new(duration, hasVideo);
+    }
+
+    private static bool IsVisualVideo(JsonElement stream)
+    {
+        if (stream.GetProperty("codec_type").GetString() != "video") return false;
+        return !stream.TryGetProperty("disposition", out var disposition) ||
+            !disposition.TryGetProperty("attached_pic", out var attached) || attached.GetInt32() != 1;
     }
 
     public Task<string?> AudioAsync(Guid id, double start, double duration, CancellationToken ct) => AudioWindowAsync(id, start, duration, "audio.mp3", ct);
@@ -132,3 +159,4 @@ public sealed partial class MediaProcessor(IMediaStorage files, IOptions<Storage
     }
 }
 public sealed class MediaException(string code) : Exception(code) { public string Code { get; } = code; }
+public sealed record MediaPreparation(double Duration, bool HasVideo);

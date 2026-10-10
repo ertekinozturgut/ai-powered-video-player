@@ -30,6 +30,7 @@ public sealed partial class Video
     public int Progress { get; private set; }
     public double Duration { get; private set; }
     public bool MediaReady { get; private set; }
+    public string MediaKind { get; private set; } = "video";
     public string? ErrorCode { get; private set; }
     public string AnalysisMode { get; private set; } = "none";
     [SensitiveData] public List<TranscriptSegment> Segments { get; private set; } = [];
@@ -121,7 +122,8 @@ public sealed partial class Video
     public bool IsBusy => Status is VideoStatus.Queued or VideoStatus.Processing;
     public void Begin() { Status = VideoStatus.Processing; ErrorCode = null; Report("Video hazırlanıyor", 5); }
     public void Report(string stage, int progress) { Stage = stage; Progress = Math.Clamp(progress, 0, 100); }
-    public void SetMedia(double duration) { Duration = duration; MediaReady = true; }
+    public void SetMedia(double duration, bool hasVideo = true)
+    { Duration = duration; MediaKind = hasVideo ? "video" : "audio"; MediaReady = true; }
     public void AwaitTranscript()
     {
         Status = VideoStatus.AwaitingTranscript;

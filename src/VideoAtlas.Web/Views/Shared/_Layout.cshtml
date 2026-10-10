@@ -1,6 +1,6 @@
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @inject VideoAtlas.Application.ILocalizationAdministration Catalog
-@{ var embedded = ViewData["Embedded"] as bool? == true; var owner = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value; var language = await Catalog.ResolveLanguageAsync(owner, Context.Request.Cookies["VideoAtlas.Language"], Context.RequestAborted); var languages = await Catalog.EnabledAsync(Context.RequestAborted); var ui = new Dictionary<string, string>(); foreach (var key in new[] { "nav.workspace", "nav.library", "nav.privacy", "nav.operations", "nav.providers", "nav.account", "nav.password", "nav.logout", "admin.localization" }) ui[key] = await Catalog.TextAsync(key, language, Context.RequestAborted); var path = Context.Request.Path; var showMenuLabel = language == "en" ? "Show menu" : "Menüyü göster"; var hideMenuLabel = language == "en" ? "Hide menu" : "Menüyü gizle"; }
+@{ var embedded = ViewData["Embedded"] as bool? == true; var owner = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value; var language = await Catalog.ResolveLanguageAsync(owner, Context.Request.Cookies["VideoAtlas.Language"], Context.RequestAborted); var languages = await Catalog.EnabledAsync(Context.RequestAborted); var ui = new Dictionary<string, string>(); foreach (var key in new[] { "nav.workspace", "nav.library", "nav.privacy", "nav.systemAdmin", "nav.operations", "nav.providers", "nav.account", "nav.password", "nav.logout", "admin.localization" }) ui[key] = await Catalog.TextAsync(key, language, Context.RequestAborted); var path = Context.Request.Path; var showMenuLabel = language == "en" ? "Show menu" : "Menüyü göster"; var hideMenuLabel = language == "en" ? "Hide menu" : "Menüyü gizle"; }
 <!DOCTYPE html>
 <html lang="@(language ?? languages.FirstOrDefault(x => x.IsDefault)?.Code ?? "tr")" data-bs-theme="dark">
 <head>
@@ -28,6 +28,7 @@
             <a href="/privacy" aria-label="@ui["nav.privacy"]" class="nav-item @(path.StartsWithSegments("/privacy") ? "active" : "")"><span aria-hidden="true">◇</span><span class="nav-label">@ui["nav.privacy"]</span></a>
             @if (User.IsInRole("Administrator"))
             {
+                <a href="/admin/system" class="nav-item @(path.StartsWithSegments("/admin/system") ? "active" : "")"><span aria-hidden="true">▤</span><span class="nav-label">@ui["nav.systemAdmin"]</span></a>
                 <a href="/admin/operations" class="nav-item @(path.StartsWithSegments("/admin/operations") ? "active" : "")"><span aria-hidden="true">◷</span><span class="nav-label">@ui["nav.operations"]</span></a>
                 <a href="/admin/providers" class="nav-item @(path.StartsWithSegments("/admin/providers") ? "active" : "")" aria-label="AI sağlayıcı yönetimi"><span aria-hidden="true">⚙</span><span class="nav-label">@ui["nav.providers"]</span></a>
                 <a href="/admin/localization" class="nav-item @(path.StartsWithSegments("/admin/localization") ? "active" : "")"><span aria-hidden="true">◎</span><span class="nav-label">@ui["admin.localization"]</span></a>

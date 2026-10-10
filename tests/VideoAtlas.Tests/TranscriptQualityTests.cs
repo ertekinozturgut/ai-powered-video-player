@@ -178,7 +178,7 @@ public sealed class TranscriptQualityTests
         var adapter = new CapturingSpeech();
         var reviewer = new TranscriptReviewer(new SpeechFactory(adapter), media, scope.ServiceProvider.GetRequiredService<IMediaStorage>());
         var segment = new TranscriptSegment(1, 3, 6, "Özgün metin");
-        var issue = await reviewer.RetranscribeAsync(id, duration, segment, default);
+        var issue = await reviewer.RetranscribeAsync(id, duration.Duration, segment, default);
         Assert.Equal("Hedef konuşma", issue.Suggestion); Assert.Equal(1, issue.SegmentId);
         Assert.Equal(0, adapter.Offset); Assert.True(adapter.ExistsDuringCall); Assert.False(File.Exists(adapter.Path));
         Assert.Equal("Özgün metin", segment.Text);

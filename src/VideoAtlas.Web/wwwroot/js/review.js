@@ -48,7 +48,10 @@ export function setupReview(base, getDetail, refresh) {
     const wanted = activeSegmentId == null ? previous : String(activeSegmentId);
     if ([...select.options].some(o => o.value === wanted)) select.value = wanted;
     showSegment();
-    $('#review-status').textContent = `${state.issues.filter(i => i.status === 'pending').length} uyarı · Metin sürümü ${state.transcriptVersion}. Uyarı olmaması metnin hatasız olduğunu garanti etmez.`;
+    const issueCount = state.issues.filter(i => i.status === 'pending').length;
+    $('#review-status').textContent = document.documentElement.lang.startsWith('en')
+      ? `${issueCount} warning · Transcript version ${state.transcriptVersion}. No warnings does not guarantee an error-free transcript.`
+      : `${issueCount} uyarı · Metin sürümü ${state.transcriptVersion}. Uyarı olmaması metnin hatasız olduğunu garanti etmez.`;
     const revisions = $('#review-revision'); revisions.replaceChildren();
     if (state.hasOriginal) revisions.append(new Option('İlk ham metin (korunan özgün kayıt)', '-1'));
     for (const r of [...state.revisions].reverse())

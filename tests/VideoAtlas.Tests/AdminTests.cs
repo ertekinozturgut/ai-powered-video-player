@@ -3,6 +3,8 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using VideoAtlas.Application;
+using VideoAtlas.Domain;
+using VideoAtlas.Infrastructure;
 using Xunit;
 
 namespace VideoAtlas.Tests;
@@ -16,9 +18,36 @@ public sealed partial class AdminTests
         await using var app = new VideoAppFactory();
         using var anonymous = app.CreateClient(new() { AllowAutoRedirect = false });
         Assert.Equal(HttpStatusCode.Redirect, (await anonymous.GetAsync("/admin/providers")).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await anonymous.GetAsync("/admin/system")).StatusCode);
         using var regular = await LoginAsync(app, false);
         Assert.Equal(HttpStatusCode.Forbidden, (await regular.GetAsync("/admin/providers")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await regular.GetAsync("/admin/system")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await regular.PostAsync("/admin/providers/select", new FormUrlEncodedContent(new Dictionary<string,string>()))).StatusCode);
+    }
+    [Fact] public async Task AdministratorCanInspectSystemDashboardAndTranscriptDetails()
+    {
+        await using var app = new VideoAppFactory();
+        using var client = await LoginAsync(app, true);
+        Guid videoId;
+        using (var scope = app.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var owner = new IdentityUser { UserName = "owner@example.invalid", Email = "owner@example.invalid", EmailConfirmed = true };
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
+            Assert.True((await users.CreateAsync(owner, "Synthetic-Test!234")).Succeeded);
+            videoId = Guid.NewGuid();
+            var video = new Video(videoId, owner.Id, "Synthetic admin inspection", 1024, TimeProvider.System.GetUtcNow());
+            video.Complete([new TranscriptSegment(1, 1, 4, "Sensitive synthetic transcript", "speaker_1")],
+                [new Chapter("Opening", "Synthetic chapter", "topic", 1, 4)], "local");
+            db.Videos.Add(video); await db.SaveChangesAsync();
+        }
+        var dashboard = await client.GetStringAsync("/admin/system");
+        Assert.Contains("Sistem yönetimi", dashboard);
+        Assert.Contains("owner@example.invalid", dashboard);
+        Assert.Contains("Synthetic admin inspection", dashboard);
+        var detail = await client.GetStringAsync($"/admin/system/videos/{videoId}");
+        Assert.Contains("Sensitive synthetic transcript", detail);
+        Assert.Contains("Hassas içerik", detail);
     }
     [Fact] public async Task AdminFormsRequireCsrfAndNeverEchoSavedOrRejectedSecrets()
     {

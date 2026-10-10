@@ -45,6 +45,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
         video.HasIndex(v => v.ShareHash).IsUnique();
         video.HasIndex(v => v.Status);
         video.Property(v => v.Title).HasMaxLength(180);
+        video.Property(v => v.MediaKind).HasMaxLength(12);
         video.Property(v => v.CreatedAt).HasConversion(v => v.ToUnixTimeMilliseconds(), v => DateTimeOffset.FromUnixTimeMilliseconds(v));
         video.Ignore(v => v.IsBusy);
         video.Ignore(v => v.Context);

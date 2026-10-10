@@ -1,0 +1,57 @@
+@model SystemAdminVideoDetailView
+@inject VideoAtlas.Application.ILocalizationAdministration Catalog
+@{
+    ViewData["Title"] = "İçerik ayrıntısı";
+    static string Clock(double seconds) => TimeSpan.FromSeconds(Math.Max(0, seconds)).ToString(seconds >= 3600 ? @"hh\:mm\:ss" : @"mm\:ss");
+    var owner = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+    var english = await Catalog.ResolveLanguageAsync(owner, Context.Request.Cookies["VideoAtlas.Language"], Context.RequestAborted) == "en";
+}
+@section Styles { <link rel="stylesheet" href="/css/system-admin.css" asp-append-version="true" /> }
+
+<header class="topbar"><span><a href="/admin/system">Sistem yönetimi</a> <span class="slash">/</span> <strong>İçerik ayrıntısı</strong></span><span class="security-pill">Hassas içerik</span></header>
+<div class="workspace-content system-admin-page admin-detail-page">
+    <div class="page-heading admin-heading"><div><span class="eyebrow">YÖNETİCİ İNCELEMESİ</span><h1>@Model.Title</h1><p class="muted">@Model.OwnerEmail · @Model.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</p></div><a class="btn btn-outline-secondary" href="/admin/system">← Panele dön</a></div>
+    <div class="sensitive-banner"><strong>Hassas içerik</strong><span>Bu sayfa kullanıcı transkriptini gösterir. Yalnızca destek ve hata inceleme amacıyla kullanın.</span></div>
+
+    <section class="admin-detail-metrics">
+        <article><span>Durum</span><strong>@Model.Status</strong><small>%@Model.Progress · @Model.Stage</small></article>
+        <article><span>Süre ve boyut</span><strong>@Clock(Model.Duration)</strong><small>@((Model.SourceBytes / 1024d / 1024d).ToString("F1")) MB</small></article>
+        <article><span>Analiz</span><strong>@Model.AnalysisLanguage.ToUpperInvariant()</strong><small>@Model.AnalysisMode · @(english ? $"{Model.Attempts} attempts" : $"{Model.Attempts} deneme")</small></article>
+        <article><span>Konuşmacı</span><strong>@(english ? (Model.SpeakerDiarization ? "Separated" : "Single stream") : (Model.SpeakerDiarization ? "Ayrımlı" : "Tek akış"))</strong><small>@(english ? (Model.ExpectedSpeakerCount is null ? "Not specified" : $"{Model.ExpectedSpeakerCount} expected") : (Model.ExpectedSpeakerCount is null ? "Sayı belirtilmedi" : $"{Model.ExpectedSpeakerCount} beklenen"))</small></article>
+    </section>
+
+    <section class="provider-panel admin-section"><div class="admin-section-heading"><div><span class="eyebrow">İŞ AKIŞI</span><h2>İşlem adımları</h2></div>@if (!string.IsNullOrWhiteSpace(Model.ErrorCode)) { <code>@Model.ErrorCode</code> }</div>
+        @if (Model.Steps.Count == 0) { <div class="admin-empty">Henüz işlem adımı kaydı yok.</div> }
+        else { <ol class="step-timeline">@foreach (var step in Model.Steps) { <li class="step-@step.State"><span></span><div><strong>@step.Label</strong><small>@step.StartedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss") @if (step.EndedAt is not null) { <text>→ @step.EndedAt.Value.ToLocalTime().ToString("HH:mm:ss")</text> }</small></div><div><b>@step.State</b>@if (!string.IsNullOrWhiteSpace(step.ErrorCode)) { <code>@step.ErrorCode</code> }</div></li> }</ol> }
+    </section>
+
+    <section class="provider-panel admin-section"><div class="admin-section-heading"><div><span class="eyebrow">METİN DÖKÜMÜ</span><h2>Transkript</h2><p class="muted">@(english ? $"{Model.Segments.Count} time-coded segments." : $"{Model.Segments.Count} zaman kodlu parça.")</p></div></div>
+        @if (Model.Segments.Count == 0) { <div class="admin-empty">Bu içerik için transkript henüz hazır değil.</div> }
+        else { <div class="admin-transcript">@foreach (var segment in Model.Segments) { var speaker = !string.IsNullOrWhiteSpace(segment.Speaker) ? Model.SpeakerNames.GetValueOrDefault(segment.Speaker, segment.Speaker) : null; <article><time>@Clock(segment.Start) – @Clock(segment.End)</time><div>@if (!string.IsNullOrWhiteSpace(speaker)) { <strong>@speaker</strong> }<p>@segment.Text</p></div></article> }</div> }
+    </section>
+
+    <section class="provider-panel admin-section"><div class="admin-section-heading"><div><span class="eyebrow">KONU BAŞLIKLARI</span><h2>Bölümler</h2></div><span class="count-badge">@(english ? $"{Model.Chapters.Count} chapters" : $"{Model.Chapters.Count} bölüm")</span></div>
+        @if (Model.Chapters.Count == 0) { <div class="admin-empty">Bölüm kaydı yok.</div> }
+        else { <div class="chapter-grid">@foreach (var chapter in Model.Chapters) { <article><time>@Clock(chapter.Start) – @Clock(chapter.End)</time><span>@chapter.Category</span><h3>@chapter.Title</h3><p>@chapter.Summary</p></article> }</div> }
+    </section>
+
+    <section class="provider-panel admin-section"><div class="admin-section-heading"><div><span class="eyebrow">AI ÇAĞRILARI</span><h2>Kullanım ve hata kayıtları</h2><p class="muted">Bu içeriğe ait son 100 sağlayıcı çağrısı.</p></div></div>
+        @if (Model.Usage.Count == 0) { <div class="admin-empty">AI kullanım kaydı yok.</div> }
+        else
+        {
+            <div class="table-responsive"><table class="admin-table"><thead><tr><th>Zaman</th><th>Sağlayıcı</th><th>İşlem</th><th>Durum</th><th>Kullanım</th><th>Süre / maliyet</th></tr></thead><tbody>
+            @foreach (var row in Model.Usage)
+            {
+                <tr>
+                    <td data-label="Zaman">@row.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</td>
+                    <td data-label="Sağlayıcı"><strong>@row.Provider</strong><small>@row.Model</small></td>
+                    <td data-label="İşlem">@row.Operation<small>@row.Capability</small></td>
+                    <td data-label="Durum"><span class="state-pill @(row.Status == "success" ? "state-success" : "state-danger")">@row.Status</span>@if (!string.IsNullOrWhiteSpace(row.ErrorCode)) { <code>@row.ErrorCode</code> }</td>
+                    <td data-label="Kullanım">@(english ? $"{row.InputTokens} input / {row.OutputTokens} output" : $"{row.InputTokens} giriş / {row.OutputTokens} çıkış")@if (row.AudioSeconds.HasValue) { <small>@(english ? $"{row.AudioSeconds.GetValueOrDefault():F1} sec audio" : $"{row.AudioSeconds.GetValueOrDefault():F1} sn ses")</small> }</td>
+                    <td data-label="Süre / maliyet">@row.Milliseconds.ToString("F0") ms<small>@if (row.ReportedUsd.HasValue) { <text>$@row.ReportedUsd.GetValueOrDefault().ToString("F5") @(english ? "reported" : "bildirilen")</text> } else if (row.EstimatedUsd.HasValue) { <text>$@row.EstimatedUsd.GetValueOrDefault().ToString("F5") @(english ? "estimated" : "tahmini")</text> } else { <text>@(english ? "unpriced" : "tarifesiz")</text> }</small></td>
+                </tr>
+            }
+            </tbody></table></div>
+        }
+    </section>
+</div>

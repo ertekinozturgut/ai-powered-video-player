@@ -106,6 +106,22 @@ Gerçek tarayıcıdan alınan güncel görseller:
 - Gerçek UI görüntüleri: `artifacts/operations-desktop.png`, `artifacts/admin-operations.png`, `artifacts/embed-minimal.png`, `artifacts/share-options.png`. İçerik ve hesaplar sentetiktir.
 - Önceki bölümde “yok” diye belirtilen sessizlik taraması, tüm metin AI taraması, kullanıcı başlatmalı ikinci STT ve ElevenLabs hizalama adaptörü bu genişletmede eklendi. OCR, öğrenilmiş VAD, otomatik doğruluk uzlaşması, ayrı worker/nesne depolama ve canlı sağlayıcı kabulü halen kapsam dışı/bekliyor. [Kapsam ve sınırlar](IMPROVEMENTS.md), [gerçek kabul planı](ACCEPTANCE.md).
 
+## Ses dosyası analizi — 10 Ekim 2026
+
+- MP3, WAV, M4A/AAC, FLAC, OGG/Opus, AIFF ve WMA/ASF ses kapsayıcıları gerçek FFprobe akış doğrulamasıyla yükleme hattına eklendi; uzantı veya istemci MIME bilgisine güvenilmiyor.
+- Ses kaynakları FFmpeg ile tarayıcıda aralık istekleriyle oynatılabilen AAC/MP4 medyaya dönüştürülüyor, ses kaydı olarak işaretleniyor ve video ile aynı STT, konuşmacı, kalite, konu, indeks ve sohbet hattına giriyor.
+- Gerçek sentetik MP3 kullanılan odaklı web testi geçti: yükleme, dönüştürme, `audio` medya türü, poster üretimi, oynatma varlığı ve transkript bekleme durumu doğrulandı (**1 geçti, 0 başarısız**). Test sınıfının bilinen geçici dosya temizleme uyarısı test sonucunu başarısız yapmadı.
+- Debug derlemesi uyarısız/hatasız tamamlandı. `AddAudioMediaKind` migrasyonu mevcut yerel veritabanına uygulandı; önceki 5 kayıt `video` olarak korundu. Yerel HTTPS hazır olma kontrolü HTTP 200 döndürdü.
+- Bu test gerçek insan konuşması doğruluğunu veya canlı STT sağlayıcı kalitesini ölçmez; 2 saat/512 MiB sınırında yük testi yeniden yapılmadı.
+
+## Yerel ses analiz MCP sunucusu — 10 Ekim 2026
+
+- Resmi C# MCP SDK 2.2.0 ile stdio sunucusu eklendi. Gerçek initialize ve `tools/list` istekleri sunucu tarafından işlendi; altı ses aracı keşfedilebilir durumda.
+- Çözüm derlemesi **0 uyarı, 0 hata** ile tamamlandı. MCP odaklı yol allowlist'i ve bağlamsal konu ayrımı testleri **2 geçti, 0 başarısız**.
+- Framework-dependent Release publish `artifacts/mcp-smoke` dizinine başarıyla üretildi. Aynı çıktı .NET 10 runtime bulunan Windows ve Linux üzerinde çalışır.
+- Yerel makinede FFmpeg, Whisper, Python, Torch, Resemblyzer, librosa ve scikit-learn import/varlık kontrolü geçti. Bu doğrulama gerçek insan konuşmasında WER veya konuşmacı doğruluğu ölçümü değildir.
+- Tam çözüm test çalıştırması denendi; MCP testleri geçti ancak mevcut web testlerinin paralel SQLite/`instance.lock` temizleme çakışmaları ve iki mevcut HTTP durum beklentisi nedeniyle tüm paket yeşil raporlanmadı. Bu hatalar MCP odaklı testlerde oluşmadı.
+
 ## Güncel dış doğrulama gereksinimleri
 
 - **Canlı OpenAI:** kullanılabilir `Ai__ApiKey` yoktu. Gerçek konuşma tanıma doğruluğu, gerçek sağlayıcı model/hesap erişimi, ücretler ve cevapların anlamsal doğruluğu canlı hesapla doğrulanmadı. Kontrollü testleri canlı AI testi olarak değerlendirmeyin.

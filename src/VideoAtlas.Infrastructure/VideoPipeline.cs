@@ -17,9 +17,10 @@ public sealed class VideoPipeline(AppDbContext db, MediaProcessor media, VideoIn
     public async Task RunAsync(Video video, CancellationToken ct)
     {
         usage.SetVideo(video);
-        await StageAsync(video, "media", "Video ve ses hazırlanıyor", 5, async () =>
+        await StageAsync(video, "media", "Medya ve ses hazırlanıyor", 5, async () =>
         {
-            video.SetMedia(await media.PrepareAsync(video.Id, ct));
+            var prepared = await media.PrepareAsync(video.Id, ct);
+            video.SetMedia(prepared.Duration, prepared.HasVideo);
         }, ct);
         if (video.Segments.Count == 0)
         {

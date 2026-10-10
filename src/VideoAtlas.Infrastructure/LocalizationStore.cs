@@ -48,9 +48,10 @@ public sealed class LocalizationStore(AppDbContext db, IAiProviderFactory provid
     private static readonly IReadOnlyDictionary<string, string> Defaults = new Dictionary<string, string>
     {
         ["nav.workspace"] = "ÇALIŞMA ALANIM", ["nav.library"] = "Video kütüphanesi", ["nav.privacy"] = "Gizlilik ve veriler",
-        ["nav.operations"] = "İşlemler ve kullanım", ["nav.providers"] = "AI sağlayıcıları", ["nav.account"] = "Çalışma hesabı",
+        ["nav.systemAdmin"] = "Sistem yönetimi", ["nav.operations"] = "İşlemler ve kullanım", ["nav.providers"] = "AI sağlayıcıları", ["nav.account"] = "Çalışma hesabı",
         ["nav.password"] = "Parolamı değiştir", ["nav.logout"] = "Güvenli çıkış", ["upload.eyebrow"] = "YENİ BİR KEŞİF",
-        ["upload.title"] = "Video yükle", ["upload.file"] = "Videonuzu buraya bırakın", ["upload.fileHelp"] = "veya dosya seçmek için tıklayın",
+        ["upload.title"] = "Medya yükle", ["upload.file"] = "Video veya ses dosyanızı buraya bırakın", ["upload.fileHelp"] = "veya dosya seçmek için tıklayın",
+        ["upload.mediaTitle"] = "Medya yükle", ["upload.mediaFile"] = "Video veya ses dosyanızı buraya bırakın",
         ["upload.videoTitle"] = "Video başlığı", ["upload.terms"] = "Terimler ve açıklamaları", ["upload.instructions"] = "Analiz yönergeleri",
         ["upload.language"] = "Analiz dili", ["upload.submit"] = "Yükle ve işlemeye başla →", ["chat.title"] = "Videoya sorun",
         ["speaker.analysis"] = "Konuşmacı analizi", ["speaker.separate"] = "Konuşmacıları ayırarak metne çevir", ["speaker.count"] = "Konuşmacı sayısı",
@@ -78,9 +79,10 @@ public sealed class LocalizationStore(AppDbContext db, IAiProviderFactory provid
     private static readonly IReadOnlyDictionary<string, string> EnglishDefaults = new Dictionary<string, string>
     {
         ["nav.workspace"] = "WORKSPACE", ["nav.library"] = "Video library", ["nav.privacy"] = "Privacy and data",
-        ["nav.operations"] = "Operations and usage", ["nav.providers"] = "AI providers", ["nav.account"] = "Work account",
+        ["nav.systemAdmin"] = "System administration", ["nav.operations"] = "Operations and usage", ["nav.providers"] = "AI providers", ["nav.account"] = "Work account",
         ["nav.password"] = "Change password", ["nav.logout"] = "Sign out securely", ["upload.eyebrow"] = "A NEW DISCOVERY",
-        ["upload.title"] = "Upload video", ["upload.file"] = "Drop your video here", ["upload.fileHelp"] = "or click to choose a file",
+        ["upload.title"] = "Upload media", ["upload.file"] = "Drop your video or audio file here", ["upload.fileHelp"] = "or click to choose a file",
+        ["upload.mediaTitle"] = "Upload media", ["upload.mediaFile"] = "Drop your video or audio file here",
         ["upload.videoTitle"] = "Video title", ["upload.terms"] = "Terms and descriptions", ["upload.instructions"] = "Analysis instructions",
         ["upload.language"] = "Analysis language", ["upload.submit"] = "Upload and start processing →", ["chat.title"] = "Ask the video",
         ["speaker.analysis"] = "Speaker analysis", ["speaker.separate"] = "Transcribe with speaker separation", ["speaker.count"] = "Number of speakers",
@@ -104,6 +106,108 @@ public sealed class LocalizationStore(AppDbContext db, IAiProviderFactory provid
         ["account.language"] = "Default interface language", ["account.email"] = "Email address", ["account.currentPassword"] = "Current password",
         ["account.save"] = "Save information", ["account.changePassword"] = "Change password", ["account.newPassword"] = "New password",
         ["account.confirmPassword"] = "Confirm new password", ["common.close"] = "Close"
+    };
+    private static readonly IReadOnlyDictionary<string, string> EnglishStaticDefaults = new Dictionary<string, string>
+    {
+        ["İçeriğe geç"] = "Skip to content", ["Ana gezinme"] = "Main navigation", ["Arayüz dili"] = "Interface language",
+        ["DAHA FAZLASINI KEŞFEDİN"] = "DISCOVER MORE", ["Her an, yeni bir fikir."] = "A new idea in every moment.",
+        ["Videolarınızla konuşun."] = "Talk to your videos.", ["Bilgiye doğrudan ulaşın."] = "Reach knowledge directly.",
+        ["Sağlayıcı durumu"] = "Provider status", ["STT: devre dışı; SRT içe aktarın. Sohbet: alıntı arama modu. Aktif sağlayıcıları yönetici panelinden seçebilirsiniz."] = "STT is disabled; import an SRT file. Chat is in quote-search mode. Select active providers in the administration panel.",
+        ["AI sağlayıcı yönetimi"] = "AI provider management", ["HER ANIN BİR CEVABI VAR"] = "EVERY MOMENT HAS AN ANSWER",
+        ["Sadece izlemeyin."] = "Do more than watch.", ["Videonuzla konuşun."] = "Talk to your video.", ["Sadece izlemeyin. Videonuzla konuşun."] = "Do more than watch. Talk to your video.",
+        ["Bir soru sorun. Doğru anı bulun."] = "Ask a question. Find the exact moment.", ["Konuşmaları, kaynağı belli cevaplara dönüştürün."] = "Turn conversations into source-backed answers.",
+        ["Bir soru sorun. Doğru anı bulun. Konuşmaları, kaynağı belli cevaplara dönüştürün."] = "Ask a question. Find the exact moment. Turn conversations into source-backed answers.",
+        ["◷ Zaman kodlu metin"] = "◷ Time-coded transcript", ["▤ Konu başlıkları"] = "▤ Topic chapters", ["✦ Kaynaklı sohbet"] = "✦ Source-backed chat",
+        ["Yeni bir bakış açısı"] = "A new perspective", ["Video veya ses · 512 MiB / 2 saat"] = "Video or audio · 512 MiB / 2 hours",
+        ["Örnek video başlığı"] = "Example video title", ["Konuşmacı analizi"] = "Speaker analysis",
+        ["Konuşmacıları ayırarak metne çevir"] = "Transcribe with speaker separation", ["Konuşmacı sayısı"] = "Number of speakers",
+        ["2–32 arasında, videoda konuşan toplam kişi sayısını girin."] = "Enter the total number of speakers in the video, from 2 to 32.",
+        ["Konuşmacı ayrımı etkin STT sağlayıcısı tarafından desteklenmelidir ve ek ücret doğurabilir."] = "Speaker separation must be supported by the active STT provider and may incur additional charges.",
+        ["Videoya özel terimler ve analiz yönergeleri (isteğe bağlı)"] = "Video-specific terms and analysis instructions (optional)",
+        ["TERİM_1 | Örnek açıklama"] = "TERM_1 | Example description", ["En fazla 50 terim. Terim 100, açıklama 500 karakter; her terim ayrı satırda."] = "Up to 50 terms. Each term may contain 100 characters and each description 500 characters; enter one term per line.",
+        ["Örnek analiz yönergesi"] = "Example analysis instruction", ["Yönergeler ve sözlük yardımcı bağlamdır; videoda söylenmiş bilgi sayılmaz. Etkin AI sağlayıcısına gönderilir."] = "Instructions and the glossary are supporting context, not statements made in the video. They are sent to the active AI provider.",
+        ["Konu başlıkları, kalite önerileri ve AI yanıtları seçtiğiniz dilde üretilir."] = "Topic chapters, quality suggestions, and AI answers are generated in the selected language.",
+        ["Bu videoyu işleme hakkına sahibim. Video/ses/metnin işlenmesini ve etkin STT, dil modeli ve indeksleme sağlayıcılarına aktarılmasını"] = "I have the right to process this video. I consent to the processing of the video, audio, and transcript and their transfer to the active STT, language-model, and indexing providers under the",
+        ["veri işleme açıklaması"] = "data-processing notice", ["kapsamında onaylıyorum."] = ".",
+        ["Tüm metni AI ile bağlam ve dil bilgisi açısından tara; yalnızca güvenli düzeltmeleri otomatik uygula (ek API ücreti doğurabilir)."] = "Review the full transcript with AI for context and grammar; automatically apply only high-confidence corrections (additional API charges may apply).",
+        ["Yükleme ilerlemesi"] = "Upload progress", ["Yükleme tamamlanınca analiz arka planda devam eder."] = "Analysis continues in the background after the upload completes.",
+        ["◇ Çalışma alanınız"] = "◇ Your workspace", ["VİDEO ÇALIŞMA ALANI"] = "VIDEO WORKSPACE", ["SES ÇALIŞMA ALANI"] = "AUDIO WORKSPACE", ["MEDYA ÇALIŞMA ALANI"] = "MEDIA WORKSPACE",
+        ["Hazır"] = "Ready", ["SRT bekliyor"] = "Awaiting SRT", ["İşleniyor"] = "Processing", ["İşlem başarısız"] = "Processing failed", ["İptal edildi"] = "Canceled", ["Sırada"] = "Queued",
+        ["◇ Anahtar kelime gruplama"] = "◇ Keyword grouping", ["✦ AI konu analizi"] = "✦ AI topic analysis", ["↓ SRT indir"] = "↓ Download SRT", ["Paylaş ve göm"] = "Share and embed",
+        ["Video ve konuşmalar"] = "Video and conversations", ["Video oynatıcı"] = "Video player", ["Ses oynatıcı"] = "Audio player", ["Konuşmaya tıklayın, o ana gidin."] = "Select a transcript line to jump to that moment.",
+        ["Video bilgileri"] = "Video details", ["▤ Metin dökümü"] = "▤ Transcript", ["◫ Konu başlıkları"] = "◫ Topic chapters", ["Konuşmalarda ara"] = "Search conversations", ["Konuşmalarda ara…"] = "Search conversations…",
+        ["Düzenle"] = "Edit", ["Metni ve zamanı düzenle"] = "Edit text and timing", ["Konu başlığını ve zamanı düzenle"] = "Edit topic and timing", ["İnceleme gerekli"] = "Review required",
+        ["AI öner"] = "AI suggestion", ["AI ile incele ve doğru alternatif öner"] = "Review with AI and suggest the correct alternative",
+        ["Terimler ve yönergeler"] = "Terms and instructions", ["Transkript kalite kontrolü"] = "Transcript quality review", ["＋ SRT içe aktar"] = "＋ Import SRT", ["↻ Yeniden analiz et"] = "↻ Reanalyze", ["Videoyu sil"] = "Delete video",
+        ["İşlem adımları, kullanım ve saklama"] = "Processing steps, usage, and retention", ["Zaman kodlu, kaynağı belli cevaplar"] = "Time-coded, source-backed answers",
+        ["Sohbeti temizle"] = "Clear chat", ["MERHABA, MERAK EDEN."] = "HELLO, CURIOUS MIND.", ["Birlikte ne keşfedelim?"] = "What shall we discover together?",
+        ["Birlikte ne"] = "What shall we", ["keşfedelim?"] = "discover together?", ["Videonuzun içindeki cevaplara,"] = "Find answers inside your video,", ["kaynağıyla birlikte ulaşın."] = "together with their sources.",
+        ["Videonuzun içindeki cevaplara, kaynağıyla birlikte ulaşın."] = "Find answers inside your video together with their sources.", ["Bu videoda neler konuşuluyor?"] = "What is discussed in this video?",
+        ["Kararları ve aksiyonları bul"] = "Find decisions and action items", ["Ana fikri özetle"] = "Summarize the main idea", ["Hızlı aksiyonlar"] = "Quick actions",
+        ["Seçili zaman aralığını özetle"] = "Summarize selected time range", ["Videoyla ilgili sorunuz"] = "Your question about the video", ["Bu video hakkında bir soru sorun…"] = "Ask a question about this video…", ["Soruyu gönder"] = "Send question",
+        ["Alıntı arama modu · AI bağlantısı yapılandırılmamış."] = "Quote-search mode · AI connection is not configured.", ["Sohbet yalnızca bu sekmede tutulur."] = "Chat is kept only in this tab.",
+        ["Zaman aralığını seçin"] = "Select a time range", ["Yalnızca belirlediğiniz bölüm analiz edilir."] = "Only the range you select will be analyzed.", ["Başlangıç"] = "Start", ["Bitiş"] = "End", ["Aralığı onayla ve özetle"] = "Confirm range and summarize",
+        ["Video bağlamı ve yönergeler"] = "Video context and instructions", ["Sözlük ve yönergeler AI analizini yönlendirir; videoda söylenmiş bilgi yerine geçmez. Kaydetmek mevcut metni değiştirmez, konu ve indeks analizini yeniden başlatır."] = "The glossary and instructions guide AI analysis but do not replace information spoken in the video. Saving does not change the current transcript; it restarts topic and index analysis.",
+        ["Terim ve açıklama listesi"] = "Term and description list", ["Terim"] = "Term", ["Açıklama"] = "Description", ["Terimi kaldır"] = "Remove term", ["+ Terim ekle"] = "+ Add term",
+        ["Her satırda bir terim ve açıklaması bulunur. En fazla 50 terim; terim 100, açıklama 500 karakterdir."] = "Each row contains one term and its description. Up to 50 terms; terms may contain 100 characters and descriptions 500 characters.",
+        ["Konu başlıkları, AI kalite önerileri ve video sorularının yanıt dili bu seçime göre hazırlanır."] = "Topic chapters, AI quality suggestions, and answers to video questions use this language.",
+        ["Etkin AI sağlayıcısına aktarılır. Bu alanlar iframe ziyaretçilerine doğrudan gösterilmez; hassas veya gizli bilgi girmeyin, AI çıktısını etkileyebilir."] = "Sent to the active AI provider. These fields are not shown directly to iframe visitors; do not enter sensitive or confidential information because it may affect AI output.",
+        ["Bağlamı kaydet ve yeniden analiz et"] = "Save context and reanalyze", ["Kategori"] = "Category", ["Tüm kategoriler"] = "All categories", ["Anahtar kelimeler"] = "Keywords",
+        ["BİLGİ PAYLAŞTIKÇA BÜYÜR"] = "KNOWLEDGE GROWS WHEN SHARED", ["Paylaş ve sitene göm"] = "Share and embed on your site",
+        ["Bağlantıya sahip kişiler videoyu, metni ve sohbeti kullanabilir. Gömme izni, bağlantıyı özel hale getirmez."] = "Anyone with the link can use the video, transcript, and chat. Embed permission does not make the link private.",
+        ["Bağlantı süresi"] = "Link lifetime", ["Bağlantı süresi içinde sınırsız"] = "No expiry", ["7 gün"] = "7 days", ["30 gün"] = "30 days", ["90 gün"] = "90 days",
+        ["İzin verilen siteler"] = "Allowed sites", ["İzinli siteleri seçin"] = "Select allowed sites", ["Siteyi ekleyip açılır listeden seçin."] = "Add a site and select it from the dropdown.", ["tüm sitelerde gömmeye izin verir."] = "allows embedding on all sites.",
+        ["Bağlantı ve iframe oluştur"] = "Create link and iframe", ["Paylaşım görünümü"] = "Share appearance", ["Tema"] = "Theme", ["Orbital · koyu neon"] = "Orbital · dark neon", ["Minimal · sade koyu"] = "Minimal · clean dark",
+        ["Başlangıç (saniye)"] = "Start (seconds)", ["Bitiş (saniye)"] = "End (seconds)", ["Metin dökümü ve altyazı"] = "Transcript and captions", ["Konu başlıkları"] = "Topic chapters", ["Video sohbeti"] = "Video chat",
+        ["Paylaşım bağlantısı"] = "Share link", ["HTML / erişim bilgisi"] = "HTML / access information", ["Iframe kodunu kopyala"] = "Copy iframe code", ["Mevcut paylaşımı kapat"] = "Disable current share",
+        ["Yeni bağlantı oluşturmak önceki bağlantıyı iptal eder. Dosyayı indirmiş kişilerin kopyaları geri alınamaz."] = "Creating a new link revokes the previous one. Copies already downloaded by others cannot be revoked.",
+        ["KAYNAĞI SESLE DOĞRULAYIN"] = "VERIFY AGAINST THE AUDIO", ["Uyarılar hata kanıtı veya STT güven puanı değildir. AI önerileri otomatik uygulanmaz. Zaman kodları yalnızca açık onayla değiştirilir; ham metin ve son 10 sürüm saklanır."] = "Warnings are not proof of an error or an STT confidence score. AI suggestions are not applied automatically. Time codes change only with explicit approval; the raw transcript and the latest 10 versions are retained.",
+        ["Uyarıları yeniden tara"] = "Rescan warnings", ["Yalnızca inceleme gerekenler"] = "Review-required only", ["İncelenecek konuşma"] = "Conversation to review", ["▷ Bölümü dinle"] = "▷ Listen to segment",
+        ["AI ile metni incele"] = "Review text with AI", ["Ses parçasını yeniden çözümle"] = "Retranscribe audio segment", ["İkinci STT ile karşılaştır"] = "Compare with secondary STT", ["Ses/metin zamanlarını hizala"] = "Align audio and text timing",
+        ["İncelenen bölümün sesi"] = "Audio for the reviewed segment", ["Kural tabanlı uyarı · güven puanı değildir"] = "Rule-based warning · not a confidence score", ["Uyarıyı reddet"] = "Dismiss warning",
+        ["İlk ham metni göster"] = "Show original raw transcript", ["İncelenen / düzenlenen metin"] = "Reviewed / edited text", ["Zaman aralığını da düzelt"] = "Also correct the time range",
+        ["Sesi dinledim; bu metnin ilgili zaman aralığında söylendiğini doğruladım."] = "I listened to the audio and verified that this text was spoken in the selected time range.", ["Düzeltmeyi onayla ve yeniden analiz et"] = "Confirm correction and reanalyze",
+        ["Önceki metin sürümüne dön"] = "Restore a previous transcript version", ["Geri yüklenecek sürüm"] = "Version to restore", ["Seçili sürümü geri yükle"] = "Restore selected version",
+        ["Yönetim"] = "Administration", ["Yalnızca yönetici"] = "Administrators only", ["KONTROL SİZDE"] = "YOU ARE IN CONTROL", ["Ses, dil modeli ve indeksleme için bağımsız sağlayıcı seçin."] = "Choose independent providers for speech, language models, and indexing.",
+        ["Konuşmayı metne çevirme"] = "Speech to text", ["Video sesini zaman kodlu metne dönüştüren birincil sağlayıcı."] = "The primary provider that converts video audio into a time-coded transcript.", ["Aktif sağlayıcı"] = "Active provider", ["Devre dışı"] = "Disabled",
+        ["İkinci STT · karşılaştırma"] = "Secondary STT · comparison", ["Birincil STT’den farklı olmalıdır ve yalnızca karşılaştırma istendiğinde çağrılır."] = "It must differ from the primary STT and is called only when a comparison is requested.",
+        ["Yapılandırma gerekli"] = "Configuration required", ["Yerel bağlantı hazır"] = "Local connection ready", ["Ayarları düzenle →"] = "Edit settings →", ["n8n akışını bağla →"] = "Connect n8n workflow →",
+        ["Dil modeli"] = "Language model", ["Sohbet, özet, konu başlıkları ve metin kalite analizlerini üretir."] = "Generates chat answers, summaries, topic chapters, and transcript quality analysis.",
+        ["Anlamsal indeksleme"] = "Semantic indexing", ["Video metnini aranabilir vektör indeksine dönüştürür."] = "Converts the video transcript into a searchable vector index.", ["Yönlendirme seçimini kaydet"] = "Save routing selection", ["Yeni işler bu seçimleri kullanır; devam eden işler değişmez."] = "New jobs use these selections; jobs already in progress are unchanged.", ["Aktif sağlayıcıları kaydet"] = "Save active providers",
+        ["ÇOK DİLLİ KATALOG"] = "MULTILINGUAL CATALOG", ["Arayüz metinlerini, tanımları ve analiz dillerini tek bir katalogdan yönetin."] = "Manage interface text, definitions, and analysis languages from a single catalog.",
+        ["Dil paketi"] = "Language pack", ["Dil kodu örneği:"] = "Language code example:", ["Varsayılan dil, ilk kez gelen kullanıcılar için kullanılır."] = "The default language is used for first-time visitors.", ["Kod"] = "Code", ["Kullanıma açık"] = "Enabled", ["Varsayılan"] = "Default", ["Dil paketini kaydet"] = "Save language pack",
+        ["Otomasyon ve aktarım"] = "Automation and transfer", ["AI yalnızca boş çevirileri taslak olarak doldurur; mevcut insan çevirilerinin üzerine yazmaz."] = "AI drafts only missing translations and never overwrites existing human translations.", ["JSON indir"] = "Download JSON", ["JSON dil paketi içe aktar"] = "Import JSON language pack", ["Çeviri girin"] = "Enter translation", ["Kaydet"] = "Save", ["Kapat"] = "Close",
+        ["Medya hazırlanıyor"] = "Preparing media", ["Konuşmacı adlarını kaydet"] = "Save speaker names", ["Medya yükleniyor…"] = "Uploading media…",
+        ["Konuşmacıları ayırarak analiz et"] = "Analyze with speaker separation", ["Analizde bulunan konuşmacı etiketlerine gerçek kişi adlarını yazabilirsiniz. Bu işlem yeniden analiz gerektirmez."] = "You can assign real names or roles to the speaker labels found in the analysis. This does not require reanalysis.",
+        ["sn"] = "sec", ["Konuşmacılar"] = "Speakers", ["Yeniden analiz ayarları"] = "Reanalysis settings", ["Analizi yeniden başlat"] = "Restart analysis", ["Medya oynatıcı"] = "Media player",
+        ["MP4, MOV, WebM, MP3, WAV, M4A, AAC, FLAC, OGG · 512 MiB · 2 saat"] = "MP4, MOV, WebM, MP3, WAV, M4A, AAC, FLAC, OGG · 512 MiB · 2 hours",
+        ["Eşleşen kullanıcı bulunamadı."] = "No matching users found.", ["Hesapları, içerikleri, iş kuyruğunu ve güvenli hata kayıtlarını tek ekrandan izleyin."] = "Monitor accounts, content, the job queue, and sanitized error records from one screen.",
+        ["Hesap"] = "Account", ["Aşama"] = "Stage", ["Kullanıcı veya içerik ara"] = "Search users or content", ["Sistem yönetimi"] = "System administration", ["HATA GÖRÜNÜRLÜĞÜ"] = "ERROR VISIBILITY",
+        ["Analiz sonucu"] = "Analysis result", ["Yetki"] = "Role", ["Kullanım ayrıntıları"] = "Usage details", ["Medya analizleri"] = "Media analyses", ["Oluşturma"] = "Created",
+        ["Tüm durumlar"] = "All statuses", ["Sağlayıcılar"] = "Providers", ["HESAPLAR"] = "ACCOUNTS", ["İçerik"] = "Content", ["Sahibi"] = "Owner", ["İnceleme gereken"] = "Needs review",
+        ["İÇERİK VE KUYRUK"] = "CONTENT AND QUEUE", ["Filtrele"] = "Filter", ["Sistem özeti"] = "System overview", ["Toplam kullanıcı"] = "Total users", ["Toplam içerik"] = "Total content",
+        ["Gizli veri ve ham exception yerine güvenli hata kodları gösterilir."] = "Sanitized error codes are shown instead of secrets and raw exceptions.", ["Eşleşen içerik bulunamadı."] = "No matching content found.",
+        ["Son yükleme"] = "Latest upload", ["E-posta, görünen ad veya video adı"] = "Email, display name, or video title", ["YÖNETİM MERKEZİ"] = "ADMINISTRATION CENTER",
+        ["Transkript ve işlem ayrıntılarını incelemek için içerik adına tıklayın."] = "Select a content title to inspect its transcript and processing details.", ["İş durumu"] = "Job status",
+        ["Son hata ve belirsiz işlemler"] = "Recent errors and uncertain operations", ["Kayıtlı bir hata bulunmuyor."] = "No recorded errors.", ["Aktif iş yükü"] = "Active workload", ["Temizle"] = "Clear",
+        ["Kullanıcılar"] = "Users", ["En fazla 100 eşleşme gösterilir. Parolalar hiçbir zaman görüntülenmez."] = "Up to 100 matches are shown. Passwords are never displayed.", ["YÖNETİCİ İNCELEMESİ"] = "ADMIN REVIEW",
+        ["Bu içeriğe ait son 100 sağlayıcı çağrısı."] = "The latest 100 provider calls for this content.", ["KONU BAŞLIKLARI"] = "TOPIC CHAPTERS", ["Süre / maliyet"] = "Duration / cost", ["Süre ve boyut"] = "Duration and size",
+        ["Konuşmacı"] = "Speaker", ["tarifesiz"] = "unpriced", ["Bu sayfa kullanıcı transkriptini gösterir. Yalnızca destek ve hata inceleme amacıyla kullanın."] = "This page displays a user's transcript. Use it only for support and troubleshooting.",
+        ["İşlem adımları"] = "Processing steps", ["Hassas içerik"] = "Sensitive content", ["Kullanım"] = "Usage", ["Transkript"] = "Transcript", ["← Panele dön"] = "← Back to dashboard",
+        ["Kullanım ve hata kayıtları"] = "Usage and error records", ["Analiz"] = "Analysis", ["Henüz işlem adımı kaydı yok."] = "No processing-step records yet.", ["İçerik ayrıntısı"] = "Content details",
+        ["İşlem"] = "Operation", ["Bölüm kaydı yok."] = "No chapter records.", ["Bölümler"] = "Chapters", ["Sağlayıcı"] = "Provider", ["Zaman"] = "Time", ["AI kullanım kaydı yok."] = "No AI usage records.",
+        ["AI ÇAĞRILARI"] = "AI CALLS", ["İŞ AKIŞI"] = "WORKFLOW", ["Bu içerik için transkript henüz hazır değil."] = "The transcript for this content is not ready yet.",
+        ["Yerel konuşmacı ayrımı çalıştırılamadı. Python bağımlılıklarını ve ses kaydını kontrol edin."] = "Local speaker separation could not run. Check the Python dependencies and audio recording.",
+        ["Konuşmacı sayısı 2–32 arasında olmalıdır."] = "The number of speakers must be between 2 and 32.", ["Medya dönüştürme zaman sınırına ulaştı."] = "Media conversion timed out.",
+        ["Medya süresi 2 saati aşmamalıdır."] = "Media duration must not exceed 2 hours.", ["Dönüştürülen medya 1 GiB sınırını aşıyor. Daha kısa bir kayıt yükleyin."] = "The converted media exceeds the 1 GiB limit. Upload a shorter recording.",
+        ["Bu dosya desteklenen bir video veya ses kaydı değil. MP4, MOV, WebM, MP3, WAV, M4A, AAC, FLAC ya da OGG yükleyin."] = "This file is not a supported video or audio recording. Upload MP4, MOV, WebM, MP3, WAV, M4A, AAC, FLAC, or OGG.",
+        ["Medya analizi tamamlanamadı. Yeniden deneyebilir veya SRT yükleyebilirsiniz."] = "Media analysis could not be completed. Try again or upload an SRT file.",
+        ["Aktif STT sağlayıcısı konuşmacı ayrımını desteklemiyor. ElevenLabs veya uyumlu bir n8n STT akışı seçin."] = "The active STT provider does not support speaker separation. Select ElevenLabs or a compatible n8n STT workflow.",
+        ["Analizi bu ayarlarla başlat"] = "Start analysis with these settings", ["Konuşmacılıya çevir"] = "Convert to speaker-separated", ["Konuşmacı ayrımı olmadan tam analiz başlatıldı."] = "Full analysis without speaker separation started.",
+        ["Oynatmak için medya oynatıcısındaki başlat düğmesine basın."] = "Press play in the media player to start playback.", ["Analiz tamamlanan metin korunarak kaldığı aşamadan sürdürüldü."] = "Analysis resumed from the last completed stage while preserving the transcript.",
+        ["Konuşmacı adları kaydedildi."] = "Speaker names saved.", ["Konuşma parçası"] = "Speech segment", ["Konuşmacı ayrımlı tam analiz başlatıldı."] = "Full speaker-separated analysis started.", ["Tam yeniden analizi başlat"] = "Start full reanalysis",
+        ["İşlem tamamlanamadı; ayrıntıyı kontrol edip yeniden deneyin"] = "Processing could not be completed; review the details and try again.", ["Videonuzun içindeki cevaplara,"] = "Find answers inside your video,",
+        [". Varsayılan dil, ilk kez gelen kullanıcılar için kullanılır."] = ". The default language is used for first-time visitors.", ["Türkçe metinleri"] = "Turkish texts"
     };
 
     public async Task EnsureAsync(CancellationToken ct)
@@ -130,6 +234,8 @@ public sealed class LocalizationStore(AppDbContext db, IAiProviderFactory provid
         var existing = await db.UiTranslations.Select(x => new { x.LanguageCode, x.Key }).ToListAsync(ct);
         foreach (var item in EnglishDefaults.Where(x => !existing.Any(e => e.LanguageCode == "en" && e.Key == x.Key)))
             db.UiTranslations.Add(new UiTranslationEntity { LanguageCode = "en", Key = item.Key, Text = item.Value, UpdatedAt = clock.GetUtcNow(), UpdatedBy = "system" });
+        foreach (var item in allDefinitions.Where(x => !EnglishDefaults.ContainsKey(x.Key) && EnglishStaticDefaults.ContainsKey(x.Value) && !existing.Any(e => e.LanguageCode == "en" && e.Key == x.Key)))
+            db.UiTranslations.Add(new UiTranslationEntity { LanguageCode = "en", Key = item.Key, Text = EnglishStaticDefaults[item.Value], UpdatedAt = clock.GetUtcNow(), UpdatedBy = "system" });
         foreach (var item in allDefinitions.Where(x => !existing.Any(e => e.LanguageCode == "tr" && e.Key == x.Key)))
             db.UiTranslations.Add(new UiTranslationEntity { LanguageCode = "tr", Key = item.Key, Text = item.Value, UpdatedAt = clock.GetUtcNow(), UpdatedBy = "system" });
         await db.SaveChangesAsync(ct);
@@ -138,7 +244,12 @@ public sealed class LocalizationStore(AppDbContext db, IAiProviderFactory provid
 
     private IEnumerable<(string Key, string Text, string Context)> DiscoverStaticContent()
     {
-        var roots = new[] { Path.Combine(environment.ContentRootPath, "Views"), Path.Combine(environment.ContentRootPath, "wwwroot", "js") };
+        var contentRoots = new[]
+        {
+            environment.ContentRootPath,
+            Path.Combine(environment.ContentRootPath, "src", "VideoAtlas.Web")
+        }.Where(path => Directory.Exists(Path.Combine(path, "Views"))).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var roots = contentRoots.SelectMany(path => new[] { Path.Combine(path, "Views"), Path.Combine(path, "wwwroot", "js") });
         foreach (var root in roots.Where(Directory.Exists))
         foreach (var file in Directory.EnumerateFiles(root, "*.*", SearchOption.AllDirectories).Where(x => x.EndsWith(".cshtml", StringComparison.OrdinalIgnoreCase) || x.EndsWith(".js", StringComparison.OrdinalIgnoreCase)))
         {
@@ -269,7 +380,11 @@ public sealed class LocalizationStore(AppDbContext db, IAiProviderFactory provid
         var query = from definition in db.UiContentDefinitions.AsNoTracking()
                     join translation in db.UiTranslations.AsNoTracking().Where(x => x.LanguageCode == language) on definition.Key equals translation.Key into values
                     from translation in values.DefaultIfEmpty()
-                    select new { definition.DefaultText, Text = translation == null ? definition.DefaultText : translation.Text };
-        return await query.GroupBy(x => x.DefaultText).Select(x => x.First()).ToDictionaryAsync(x => x.DefaultText, x => x.Text, ct);
+                    select new { definition.DefaultText, Text = translation == null ? definition.DefaultText : translation.Text, HasTranslation = translation != null };
+        var rows = await query.ToListAsync(ct);
+        var result = rows.GroupBy(x => x.DefaultText).Select(x => x.OrderByDescending(y => y.HasTranslation).First()).ToDictionary(x => x.DefaultText, x => x.Text);
+        if (language == "en")
+            foreach (var item in EnglishStaticDefaults.Where(x => !result.ContainsKey(x.Key) || result[x.Key] == x.Key)) result[item.Key] = item.Value;
+        return result;
     }
 }

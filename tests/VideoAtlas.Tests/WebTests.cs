@@ -95,6 +95,35 @@ public sealed partial class WebTests : IClassFixture<VideoAppFactory>
         var files = finalScope.ServiceProvider.GetRequiredService<IMediaStorage>(); Assert.False(File.Exists(files.PathFor(created.Id, "video.mp4")));
     }
 
+    [Fact] public async Task AudioUploadIsPreparedForPlaybackAndTranscriptAnalysis()
+    {
+        using var client = await RegisterAsync();
+        var fixture = await factory.AudioFixtureAsync();
+        using var upload = new MultipartFormDataContent();
+        var bytes = new ByteArrayContent(await File.ReadAllBytesAsync(fixture));
+        bytes.Headers.ContentType = new("audio/mpeg");
+        upload.Add(bytes, "file", "synthetic.mp3");
+        upload.Add(new StringContent("Sentetik ses kaydı"), "title");
+        upload.Add(new StringContent("true"), "consent");
+        var response = await client.PostAsync("/api/videos", upload);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content.ReadFromJsonAsync<VideoSummary>(VideoAppFactory.Json);
+        Assert.NotNull(created);
+        VideoDetail? detail = null;
+        for (var i = 0; i < 80; i++)
+        {
+            detail = await client.GetFromJsonAsync<VideoDetail>($"/api/videos/{created.Id}", VideoAppFactory.Json);
+            if (detail!.Video.Status is not (Domain.VideoStatus.Processing or Domain.VideoStatus.Queued)) break;
+            await Task.Delay(250);
+        }
+        Assert.NotNull(detail);
+        Assert.Equal("audio", detail.Video.MediaKind);
+        Assert.True(detail.Video.MediaReady);
+        Assert.Equal(Domain.VideoStatus.AwaitingTranscript, detail.Video.Status);
+        Assert.Equal("video/mp4", (await client.GetAsync($"/api/videos/{created.Id}/media")).Content.Headers.ContentType?.MediaType);
+        Assert.Equal("image/jpeg", (await client.GetAsync($"/api/videos/{created.Id}/poster")).Content.Headers.ContentType?.MediaType);
+    }
+
     private async Task<HttpClient> RegisterAsync()
     {
         var client = factory.CreateClient(new() { AllowAutoRedirect = false });
@@ -133,6 +162,16 @@ public class VideoAppFactory : WebApplicationFactory<Program>
         var file = Path.Combine(root, "synthetic.mp4");
         var info = new ProcessStartInfo("ffmpeg") { UseShellExecute = false, RedirectStandardError = true };
         foreach (var arg in new[] { "-nostdin", "-y", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=10", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=16000", "-t", "10", "-c:v", "libx264", "-threads", "1", "-pix_fmt", "yuv420p", "-c:a", "aac", file }) info.ArgumentList.Add(arg);
+        using var process = Process.Start(info)!;
+        var error = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync(); Assert.True(process.ExitCode == 0, await error); return file;
+    }
+    public async Task<string> AudioFixtureAsync()
+    {
+        Directory.CreateDirectory(root);
+        var file = Path.Combine(root, "synthetic.mp3");
+        var info = new ProcessStartInfo("ffmpeg") { UseShellExecute = false, RedirectStandardError = true };
+        foreach (var arg in new[] { "-nostdin", "-y", "-v", "error", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=16000", "-t", "5", "-c:a", "libmp3lame", "-b:a", "64k", file }) info.ArgumentList.Add(arg);
         using var process = Process.Start(info)!;
         var error = process.StandardError.ReadToEndAsync();
         await process.WaitForExitAsync(); Assert.True(process.ExitCode == 0, await error); return file;

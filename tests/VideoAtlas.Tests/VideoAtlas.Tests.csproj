@@ -7,5 +7,6 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
     <PackageReference Include="TngTech.ArchUnitNET.xUnit" Version="0.11.2" />
     <ProjectReference Include="../../src/VideoAtlas.Web/VideoAtlas.Web.csproj" />
+    <ProjectReference Include="../../src/VideoAtlas.Mcp/VideoAtlas.Mcp.csproj" />
   </ItemGroup>
 </Project>

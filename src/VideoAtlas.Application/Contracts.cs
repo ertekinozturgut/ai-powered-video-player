@@ -3,7 +3,7 @@ using VideoAtlas.Domain;
 namespace VideoAtlas.Application;
 
 public sealed record VideoSummary(Guid Id, string Title, DateTimeOffset CreatedAt, VideoStatus Status,
-    string Stage, int Progress, double Duration, bool MediaReady, string? ErrorCode);
+    string Stage, int Progress, double Duration, bool MediaReady, string? ErrorCode, string MediaKind = "video");
 public sealed record VideoDetail(VideoSummary Video, IReadOnlyList<TranscriptSegment> Segments,
     IReadOnlyList<Chapter> Chapters, string AnalysisMode, bool Shared, DateTimeOffset? ShareExpiresAt, string IndexStatus = "none", bool AiConfigured = false,
     int TranscriptVersion = 0, IReadOnlyList<int>? UncertainSegmentIds = null, SharePresentation? Presentation = null, int ReviewVersion = 0,
@@ -67,7 +67,7 @@ public sealed class AppException(int status, string code, string message) : Exce
 public static class VideoMapping
 {
     public static VideoSummary Summary(Video v) => new(v.Id, v.Title, v.CreatedAt, v.Status,
-        v.Stage, v.Progress, v.Duration, v.MediaReady, v.ErrorCode);
+        v.Stage, v.Progress, v.Duration, v.MediaReady, v.ErrorCode, v.MediaKind);
     public static VideoDetail Detail(Video v, DateTimeOffset now) => new(Summary(v), v.Segments,
         v.Chapters, v.AnalysisMode, v.CanShare(now), v.ShareExpiresAt, TranscriptVersion: v.TranscriptVersion,
         UncertainSegmentIds: v.TranscriptIssues.Where(i => i.Status == "pending").Select(i => i.SegmentId).Distinct().ToArray(), ReviewVersion: v.ReviewVersion,
