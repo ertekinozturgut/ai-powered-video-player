@@ -15,13 +15,16 @@ public sealed class LibraryController(IVideoStore store, VideoLibrary library, V
     [HttpPost, EnableRateLimiting("upload"), TypeFilter(typeof(MutationFilter))]
     public async Task<IActionResult> Upload([FromForm] UploadForm form, CancellationToken ct)
     {
+        if (form.SpeakerDiarization && !await intelligence.SpeakerDiarizationConfiguredAsync(ct))
+            throw new AppException(409, "diarization_unsupported", "Aktif STT sağlayıcısı konuşmacı ayrımını desteklemiyor. ElevenLabs veya uyumlu bir n8n STT akışı seçin.");
         await using var stream = form.File.OpenReadStream();
         var terms = (form.Terms ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line =>
         {
             var pair = line.Split('|', 2);
             return new VideoAtlas.Domain.VideoTerm(pair[0], pair.Length == 2 ? pair[1] : "");
         }).ToArray();
-        var context = TranscriptQuality.ValidateContext(terms, form.AnalysisInstructions ?? "", form.AnalysisLanguage);
+        var context = TranscriptQuality.ValidateContext(terms, form.AnalysisInstructions ?? "", form.AnalysisLanguage,
+            form.SpeakerDiarization, form.SpeakerCount);
         var video = await library.UploadAsync(new(Owner, form.Title, form.File.Length, form.Consent, stream, context, form.FullReview), ct);
         return Created($"/api/videos/{video.Id}", video);
     }
@@ -29,12 +32,27 @@ public sealed class LibraryController(IVideoStore store, VideoLibrary library, V
     public async Task<IActionResult> Detail(Guid id, CancellationToken ct)
     {
         var video = await access.OwnedAsync(id, Owner, ct);
-        return Ok(VideoMapping.Detail(video, clock.GetUtcNow()) with { IndexStatus = await intelligence.IndexStatusAsync(video, ct), AiConfigured = await intelligence.IsConfiguredAsync(ct) });
+        return Ok(VideoMapping.Detail(video, clock.GetUtcNow()) with { IndexStatus = await intelligence.IndexStatusAsync(video, ct),
+            AiConfigured = await intelligence.IsConfiguredAsync(ct), SpeakerDiarizationAvailable = await intelligence.SpeakerDiarizationConfiguredAsync(ct) });
     }
     [HttpDelete("{id:guid}"), TypeFilter(typeof(MutationFilter))]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct) { await library.DeleteAsync(await access.OwnedAsync(id, Owner, ct), ct); return NoContent(); }
     [HttpPost("{id:guid}/retry"), TypeFilter(typeof(MutationFilter))]
     public async Task<IActionResult> Retry(Guid id, CancellationToken ct) { await library.RetryAsync(await access.OwnedAsync(id, Owner, ct), ct); return Accepted(); }
+    [HttpPost("{id:guid}/reanalyze"), TypeFilter(typeof(MutationFilter))]
+    public async Task<IActionResult> Reanalyze(Guid id, ReanalysisForm form, CancellationToken ct)
+    {
+        if (form.SpeakerDiarization && !await intelligence.SpeakerDiarizationConfiguredAsync(ct))
+            throw new AppException(409, "diarization_unsupported", "Aktif STT sağlayıcısı konuşmacı ayrımını desteklemiyor. ElevenLabs veya uyumlu bir n8n STT akışı seçin.");
+        await library.ReanalyzeAsync(await access.OwnedAsync(id, Owner, ct), new(form.SpeakerDiarization, form.SpeakerCount), ct);
+        return Accepted();
+    }
+    [HttpPut("{id:guid}/speakers"), TypeFilter(typeof(MutationFilter))]
+    public async Task<IActionResult> SaveSpeakers(Guid id, SpeakerNamesForm form, CancellationToken ct)
+    {
+        await library.SaveSpeakerNamesAsync(await access.OwnedAsync(id, Owner, ct), form.Names, ct);
+        return NoContent();
+    }
     [HttpPost("{id:guid}/subtitles"), RequestSizeLimit(2_100_000), TypeFilter(typeof(MutationFilter))]
     public async Task<IActionResult> Import(Guid id, SubtitleForm form, CancellationToken ct)
     { await library.ImportAsync(await access.OwnedAsync(id, Owner, ct), form.Content, ct); return NoContent(); }

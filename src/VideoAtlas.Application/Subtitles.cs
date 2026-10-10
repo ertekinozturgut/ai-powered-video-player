@@ -44,13 +44,21 @@ public static partial class Subtitles
         return values[0] * 3600 + values[1] * 60 + values[2] + values[3] / 1000d;
     }
     private static AppException Invalid() => new(400, "invalid_subtitles", "SRT içeriği veya zamanları geçersiz. Zamanlar video süresi içinde ve sıralı olmalıdır.");
-    public static string Format(IReadOnlyList<TranscriptSegment> segments, bool webVtt = false)
+    public static string Format(IReadOnlyList<TranscriptSegment> segments, bool webVtt = false,
+        IReadOnlyDictionary<string, string>? speakerNames = null)
     {
         var b = new StringBuilder(webVtt ? "WEBVTT\n\n" : "");
         foreach (var s in segments)
         {
+            var text = s.Text.Replace("-->", "→", StringComparison.Ordinal);
+            if (!string.IsNullOrWhiteSpace(s.Speaker))
+            {
+                var speaker = speakerNames is not null && speakerNames.TryGetValue(s.Speaker, out var name) && !string.IsNullOrWhiteSpace(name)
+                    ? name : s.Speaker;
+                text = $"[{speaker}] {text}";
+            }
             b.Append(s.Id + 1).Append('\n').Append(Stamp(s.Start, webVtt)).Append(" --> ")
-                .Append(Stamp(s.End, webVtt)).Append('\n').Append(s.Text.Replace("-->", "→", StringComparison.Ordinal)).Append("\n\n");
+                .Append(Stamp(s.End, webVtt)).Append('\n').Append(text).Append("\n\n");
         }
         return b.ToString();
     }

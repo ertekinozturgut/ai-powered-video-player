@@ -11,7 +11,7 @@
       "webhookId": "videoatlas-stt-v1"
     },
     {
-      "parameters": { "content": "## AI sağlayıcınızı buraya bağlayın\nWebhook `file` alanında ses, `operation=speech`, `contractVersion=1`, `model` ve isteğe bağlı `terms` gönderir. Ses n8n binary çıktısında `file0` olarak görünür. Bu Code düğümünü STT düğümünüz ve bir eşleme düğümüyle değiştirin. Son düğüm `{ segments: [{ start, end, text }] }` üretmelidir. Zamanlar gönderilen ses parçasına göre saniyedir.", "height": 280, "width": 430 },
+      "parameters": { "content": "## AI sağlayıcınızı buraya bağlayın\nWebhook `file` alanında ses, `operation=speech`, `contractVersion=1`, `model`, `diarizationEnabled`, isteğe bağlı `speakerCount` ve `terms` gönderir. Ses n8n binary çıktısında `file0` olarak görünür. Bu Code düğümünü STT düğümünüz ve bir eşleme düğümüyle değiştirin. Son düğüm `{ segments: [{ start, end, text, speaker }] }` üretmelidir. `speaker`, konuşmacı ayrımı kapalıysa null olabilir. Zamanlar gönderilen ses parçasına göre saniyedir.", "height": 300, "width": 450 },
       "id": "80723e31-cf38-43da-a531-880f881dde48",
       "name": "Kurulum notu",
       "type": "n8n-nodes-base.stickyNote",

@@ -34,7 +34,11 @@ public sealed class UploadForm
     [StringLength(4000)] public string? AnalysisInstructions { get; set; }
     [RegularExpression("^[a-z]{2,3}(-[a-z]{2,4})?$")] public string AnalysisLanguage { get; set; } = "tr";
     public bool FullReview { get; set; } = true;
+    public bool SpeakerDiarization { get; set; }
+    [Range(2, 32)] public int? SpeakerCount { get; set; }
 }
+public sealed record ReanalysisForm(bool SpeakerDiarization, [Range(2, 32)] int? SpeakerCount);
+public sealed record SpeakerNamesForm([Required, MaxLength(32)] Dictionary<string, string> Names);
 public sealed record SubtitleForm([Required, StringLength(2_000_000)] string Content);
 public sealed record ShareForm([Range(0, 90)] int Days, [Required, MaxLength(10)] string[] Origins,
     VideoAtlas.Domain.SharePresentation? Presentation = null, bool RequireLogin = false, [MaxLength(10)] string[]? Viewers = null);

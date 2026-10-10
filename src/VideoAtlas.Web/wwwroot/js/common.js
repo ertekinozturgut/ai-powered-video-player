@@ -35,6 +35,35 @@ export const errors = {invalid_video: 'Bu dosya desteklenen/geçerli bir video d
 Object.assign(errors, {resolution_limit: 'Video çözünürlüğü desteklenen sınırı aşıyor. En fazla 4096×4096 piksel eşdeğeri kullanın.', output_size_limit: 'Dönüştürülen video 1 GiB sınırını aşıyor. Daha kısa bir video yükleyin.'});
 Object.assign(errors, {ai_configuration: 'Sağlayıcı modeli, API sözleşmesi veya uç noktası geçersiz. Yönetici panelinden kontrol edin.', provider_not_configured: 'Bu işlem için aktif sağlayıcı seçilmedi.', provider_secret_unavailable: 'Sağlayıcı anahtarı çözülemedi. Yönetici anahtarı yeniden kaydetmelidir.', provider_adapter_missing: 'Seçili sağlayıcı adaptörü bulunamadı.'});
 Object.assign(errors, {ai_budget:'Günlük AI çağrı veya tahmini bütçe sınırına ulaşıldı. Tamamlanan parçalar korundu. Sınırları yöneticiyle kontrol edin.', stt_checkpoint_mismatch:'Kaydedilmiş ses parçaları farklı STT/model/sözlüğe ait. Eski ayara dönün veya işlem panelinden ses kontrol noktalarını açıkça sıfırlayın.'});
+Object.assign(errors, {diarization_unsupported:'Aktif STT sağlayıcısı konuşmacı ayrımını desteklemiyor. ElevenLabs veya uyumlu bir n8n STT akışı seçin.', invalid_speaker_count:'Konuşmacı sayısı 2–32 arasında olmalıdır.'});
+Object.assign(errors, {local_diarization_unavailable:'Yerel konuşmacı ayrımı çalıştırılamadı. Python bağımlılıklarını ve ses kaydını kontrol edin.'});
+
+const sidebarToggle = $('#sidebar-toggle');
+const sidebarStorageKey = 'VideoAtlas.SidebarCollapsed';
+const setSidebarCollapsed = collapsed => {
+  document.body.classList.toggle('sidebar-collapsed', collapsed);
+  if (!sidebarToggle) return;
+  const label = collapsed ? sidebarToggle.dataset.showLabel : sidebarToggle.dataset.hideLabel;
+  sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
+  sidebarToggle.setAttribute('aria-label', label);
+  sidebarToggle.title = label;
+};
+if (sidebarToggle && !sidebarToggle.dataset.sidebarToggleReady) {
+  sidebarToggle.dataset.sidebarToggleReady = 'true';
+  let collapsed = false;
+  try { collapsed = localStorage.getItem(sidebarStorageKey) === 'true'; }
+  catch { /* The menu remains visible when browser storage is unavailable. */ }
+  setSidebarCollapsed(collapsed);
+  sidebarToggle.addEventListener('click', () => {
+    const next = !document.body.classList.contains('sidebar-collapsed');
+    setSidebarCollapsed(next);
+    try { localStorage.setItem(sidebarStorageKey, String(next)); }
+    catch { /* The control still works for the current page. */ }
+  });
+  window.addEventListener('storage', event => {
+    if (event.key === sidebarStorageKey) setSidebarCollapsed(event.newValue === 'true');
+  });
+}
 document.addEventListener('click', event => {
   const opener = event.target.closest('[data-open]');
   if (opener) document.getElementById(opener.dataset.open)?.showModal();

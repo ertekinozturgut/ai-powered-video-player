@@ -12,6 +12,8 @@ public sealed class VideoIntelligence(IAiProviderFactory providers, TranscriptIn
     public Task<IReadOnlyList<TranscriptSegment>> EvidenceAsync(Video video, ChatRequest request, CancellationToken ct) =>
         index.EvidenceAsync(video, request, ct);
     public async Task<bool> SpeechConfiguredAsync(CancellationToken ct) => await providers.SpeechAsync(ct) is not null;
+    public async Task<bool> SpeakerDiarizationConfiguredAsync(CancellationToken ct) =>
+        (await providers.SpeechAsync(ct))?.Adapter.SupportsSpeakerDiarization == true;
     public async Task<IReadOnlyList<TranscriptSegment>> TranscribeAsync(string audioPath, double offset, CancellationToken ct)
         => await TranscribeAsync(audioPath, offset, VideoContext.Empty, ct);
     public async Task<IReadOnlyList<TranscriptSegment>> TranscribeAsync(string audioPath, double offset, VideoContext context, CancellationToken ct)

@@ -1,0 +1,5 @@
+openai-whisper>=20250625
+Resemblyzer>=0.1.1
+scikit-learn>=1.7
+librosa>=0.11
+torch>=2.6

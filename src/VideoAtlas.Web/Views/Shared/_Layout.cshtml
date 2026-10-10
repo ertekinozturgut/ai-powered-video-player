@@ -1,6 +1,6 @@
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @inject VideoAtlas.Application.ILocalizationAdministration Catalog
-@{ var embedded = ViewData["Embedded"] as bool? == true; var owner = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value; var language = await Catalog.ResolveLanguageAsync(owner, Context.Request.Cookies["VideoAtlas.Language"], Context.RequestAborted); var languages = await Catalog.EnabledAsync(Context.RequestAborted); var ui = new Dictionary<string, string>(); foreach (var key in new[] { "nav.workspace", "nav.library", "nav.privacy", "nav.operations", "nav.providers", "nav.account", "nav.password", "nav.logout", "admin.localization" }) ui[key] = await Catalog.TextAsync(key, language, Context.RequestAborted); var path = Context.Request.Path; }
+@{ var embedded = ViewData["Embedded"] as bool? == true; var owner = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value; var language = await Catalog.ResolveLanguageAsync(owner, Context.Request.Cookies["VideoAtlas.Language"], Context.RequestAborted); var languages = await Catalog.EnabledAsync(Context.RequestAborted); var ui = new Dictionary<string, string>(); foreach (var key in new[] { "nav.workspace", "nav.library", "nav.privacy", "nav.operations", "nav.providers", "nav.account", "nav.password", "nav.logout", "admin.localization" }) ui[key] = await Catalog.TextAsync(key, language, Context.RequestAborted); var path = Context.Request.Path; var showMenuLabel = language == "en" ? "Show menu" : "Menüyü göster"; var hideMenuLabel = language == "en" ? "Hide menu" : "Menüyü gizle"; }
 <!DOCTYPE html>
 <html lang="@(language ?? languages.FirstOrDefault(x => x.IsDefault)?.Code ?? "tr")" data-bs-theme="dark">
 <head>
@@ -14,12 +14,13 @@
     <link rel="stylesheet" href="/lib/bootstrap.min.css" />
     <link rel="stylesheet" href="/css/site.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
+    <link rel="stylesheet" href="/css/readability.css" asp-append-version="true" />
 </head>
 <body class="@(embedded ? "embed-layout" : "app-layout")">
 <a class="skip-link" href="#main">İçeriğe geç</a>
 @if (!embedded && User.Identity?.IsAuthenticated == true)
 {
-    <aside class="sidebar">
+    <aside class="sidebar" id="app-sidebar">
         <a href="/" class="brand"><span class="brand-mark" aria-hidden="true"></span> Video<span>Atlas</span></a>
         <div class="workspace-label">@ui["nav.workspace"]</div>
         <nav aria-label="Ana gezinme">
@@ -37,6 +38,7 @@
         <form action="/language/select" method="post" class="language-switcher" data-language-form>@Html.AntiForgeryToken()<input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" /><select name="code" aria-label="Arayüz dili" data-language-select>@foreach (var item in languages) { <option value="@item.Code" selected="@(item.Code == (language ?? languages.FirstOrDefault(x => x.IsDefault)?.Code))">@item.Name</option> }</select></form>
         <form action="/account/logout" method="post">@Html.AntiForgeryToken()<button class="signout" type="submit">@ui["nav.logout"] <span class="arrow-out" aria-hidden="true"></span></button></form>
     </aside>
+    <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-controls="app-sidebar" aria-expanded="true" aria-label="@hideMenuLabel" title="@hideMenuLabel" data-show-label="@showMenuLabel" data-hide-label="@hideMenuLabel"><span class="sidebar-toggle-icon" aria-hidden="true"></span></button>
 }
 <main id="main" class="main-shell">@RenderBody()</main>
 <div id="toast" class="toast-message" role="status" aria-live="polite" hidden></div>

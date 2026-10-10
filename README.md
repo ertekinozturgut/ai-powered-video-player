@@ -21,7 +21,7 @@ API anahtarı yokken uygulama yine açılır: SRT içe aktarma, anahtar kelime k
 
 Yeni: [işleme/kalite/paylaşım/kullanım geliştirmeleri](docs/IMPROVEMENTS.md) ve [gerçek video kabul ölçümleri](docs/ACCEPTANCE.md). İşlem ekranında iptal/devam, yönetimde kullanım/hata takibi; paylaşımda görünüm ve izinli hesap seçenekleri bulunur.
 
-1. Video yükleyin; işleme ve gerekiyorsa dış AI aktarımını onaylayın. MP4/MOV/WebM; en fazla 512 MiB ve 2 saat.
+1. Video yükleyin; işleme ve gerekiyorsa dış AI aktarımını onaylayın. MP4/MOV/WebM; en fazla 512 MiB ve 2 saat. Destekleyen STT sağlayıcısında konuşmacı ayrımını açıp 2–32 arası beklenen konuşmacı sayısını seçebilirsiniz.
 2. İş durumu otomatik yenilenir. AI yoksa zaman kodlu SRT içe aktarın. SRT içe aktarımı mevcut metni değiştirir. Yeniden analiz, varsa metni yeniden kullanır ve AI konu başlıklarını üretir.
 3. Metin satırına veya konu başlığına tıklayın; video o ana atlar. Metinde arama ve kategori filtresi vardır.
 4. Sorunuzu yazın; cevaptaki kaynak düğmeleri ilgili zamana götürür. AI yanıtlarını kaynaklarla doğrulayın. Uzun videolarda bağlam seçimi sınırlıdır; tüm video hakkında eksiksiz çıkarım garantisi yoktur.
@@ -29,6 +29,7 @@ Yeni: [işleme/kalite/paylaşım/kullanım geliştirmeleri](docs/IMPROVEMENTS.md
 6. Paylaşımı kapatmak tüm paylaşım uçlarını geçersiz kılar. Video silme medya, döküm ve paylaşım kaydını kaldırır.
 7. Yüklerken veya video ekranındaki **Terimler ve yönergeler** bölümünden videoya özel sözlük/açıklama ve analiz tercihleri girin.
 8. **Transkript kalite kontrolü** ile şüpheli bölümleri filtreleyin; sesi dinleyin, AI önerisi veya hedefli STT isteyin. Metin ve zaman düzeltmeleri açık onayla uygulanır; ham metin korunur, konular ve indeks yeniden hazırlanır. [Kalite kontrol kılavuzu ve sınırları](docs/TRANSCRIPT-QUALITY.md).
+9. Konuşmacı ayrımlı analizden sonra oluşan konuşmacı etiketlerine ad/rol verin. Bitmiş bir analizi sonradan konuşmacı ayrımlı hale getirmek, sesin STT sağlayıcısına yeniden gönderilmesini ve tüm türetilmiş analizin yeniden kurulmasını gerektirir.
 
 ## Test ve dağıtım
 
@@ -54,4 +55,4 @@ Gerçek arayüzden kullanım demosunu yeniden üretmek için [demo kayıt kılav
 - `tests`: xUnit, gerçek assembly mimari kontrolleri, API/FFmpeg ve Playwright testleri. Varsayılan tarayıcı testleri 5090/5091 portlarında ayrı geçici verilerle, canlı anahtarlardan yalıtılmış çalışır.
 - `vendor/agent-squad`: kullanılan kaynak sürümü ve lisansı.
 
-İlk dağıtım tek uygulama örneği ve kalıcı yerel disk içindir; çoklu replica desteklenmez. Harici AI ücretleri size aittir. Kayıtlı kullanıcı izolasyonu vardır; kurumsal SSO, ekip rolleri, ödeme, canlı yayın ve konuşmacı diarizasyonu kapsam dışındadır.
+İlk dağıtım tek uygulama örneği ve kalıcı yerel disk içindir; çoklu replica desteklenmez. Harici AI ücretleri size aittir. Kayıtlı kullanıcı izolasyonu vardır; kurumsal SSO, ekip rolleri, ödeme ve canlı yayın kapsam dışındadır. Konuşmacı ayrımı ElevenLabs, local Whisper ve uyumlu n8n STT akışlarında desteklenir; OpenAI/Azure adaptörleri bu özelliği desteklemez. Local Whisper konuşmacı ayrımı sesi makineden çıkarmadan Resemblyzer ses gömmeleri ve kümeleme ile çalışır; `python -m pip install -r requirements-local-whisper.txt` bağımlılıkları kurulmalıdır.

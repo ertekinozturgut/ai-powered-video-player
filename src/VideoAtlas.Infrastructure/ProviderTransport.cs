@@ -48,20 +48,22 @@ internal static class ProviderResponse
         catch (Exception ex) when (ex is JsonException or InvalidOperationException or KeyNotFoundException or FormatException or IndexOutOfRangeException)
         { throw new AiException("ai_invalid_response"); }
     }
-    public static IReadOnlyList<TranscriptSegment> Segments(JsonElement array, double offset)
+    public static IReadOnlyList<TranscriptSegment> Segments(JsonElement array, double offset, double maximumDuration = 480)
     {
         var segments = Read(() => array.EnumerateArray().Select((s, i) => new TranscriptSegment(i,
             offset + s.GetProperty("start").GetDouble(), offset + s.GetProperty("end").GetDouble(),
-            s.GetProperty("text").GetString()?.Trim() ?? "")).ToArray());
-        return ValidateSegments(segments, offset);
+            s.GetProperty("text").GetString()?.Trim() ?? "",
+            s.TryGetProperty("speaker", out var speaker) ? speaker.GetString() :
+                s.TryGetProperty("speakerId", out var speakerId) ? speakerId.GetString() : null)).ToArray());
+        return ValidateSegments(segments, offset, maximumDuration);
     }
-    public static IReadOnlyList<TranscriptSegment> ValidateSegments(IReadOnlyList<TranscriptSegment> segments, double offset)
+    public static IReadOnlyList<TranscriptSegment> ValidateSegments(IReadOnlyList<TranscriptSegment> segments, double offset, double maximumDuration = 480)
     {
         double previous = offset;
         foreach (var s in segments)
         {
             if (!double.IsFinite(s.Start) || !double.IsFinite(s.End) || s.Start < previous || s.End <= s.Start ||
-                s.End > offset + 481 || s.Text.Length > 16000)
+                s.End > offset + maximumDuration + 1 || s.Text.Length > 16000 || s.Speaker?.Length > 80)
                 throw new AiException("ai_invalid_response");
             previous = s.Start;
         }

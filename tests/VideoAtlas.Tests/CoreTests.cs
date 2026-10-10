@@ -16,6 +16,12 @@ public sealed class CoreTests
         Assert.StartsWith("WEBVTT\n\n", Subtitles.Format(parsed, true));
         Assert.Contains("00:00:03.000", Subtitles.Format(parsed, true));
     }
+    [Fact] public void SubtitleExportIncludesDefinedSpeakerNames()
+    {
+        var segments = new[] { new TranscriptSegment(0, 0, 2, "Merhaba", "speaker_0") };
+        var result = Subtitles.Format(segments, speakerNames: new Dictionary<string, string> { ["speaker_0"] = "Sunucu" });
+        Assert.Contains("[Sunucu] Merhaba", result);
+    }
     [Theory]
     [InlineData("1\n00:00:05,000 --> 00:00:03,000\nInvalid")]
     [InlineData("1\n00:00:00,000 --> 00:00:11,100\nOutside video")]

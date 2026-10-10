@@ -1,7 +1,8 @@
 namespace VideoAtlas.Domain;
 
 public sealed record VideoTerm(string Term, string Description);
-public sealed record VideoContext(IReadOnlyList<VideoTerm> Terms, string Instructions, string Language = "tr")
+public sealed record VideoContext(IReadOnlyList<VideoTerm> Terms, string Instructions, string Language = "tr",
+    bool DiarizationEnabled = false, int? SpeakerCount = null, IReadOnlyDictionary<string, string>? SpeakerNames = null)
 {
     public static VideoContext Empty { get; } = new([], "", "tr");
 }

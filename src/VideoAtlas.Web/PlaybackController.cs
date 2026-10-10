@@ -52,7 +52,7 @@ public sealed class PlaybackController(VideoAccess access, IMediaStorage files, 
         if (asset is "subtitles.srt" or "subtitles.vtt")
         {
             VideoAccess.RequireReady(video);
-            return File(Encoding.UTF8.GetBytes(Subtitles.Format(video.Segments, asset.EndsWith(".vtt", StringComparison.Ordinal))),
+            return File(Encoding.UTF8.GetBytes(Subtitles.Format(video.Segments, asset.EndsWith(".vtt", StringComparison.Ordinal), video.SpeakerNames)),
                 asset == "subtitles.vtt" ? "text/vtt; charset=utf-8" : "application/x-subrip; charset=utf-8",
                 asset == "subtitles.srt" ? "transcript.srt" : null);
         }

@@ -7,6 +7,7 @@ Yeni tüm metin taraması, sessizlik, ikinci STT ve zaman hizalama davranışı:
 - **Video yükle → Videoya özel terimler ve analiz yönergeleri:** ilk analizden önce yardımcı bağlam girin.
 - **Video çalışma alanı → Terimler ve yönergeler:** mevcut videonun sözlüğünü/yönergelerini düzenleyin. Bu bölüm normal video sahibine açıktır; sağlayıcı admin panelinden ayrıdır.
 - **Video çalışma alanı → Transkript kalite kontrolü:** tüm konuşmaları veya yalnızca uyarılı bölümleri inceleyin. Iframe ziyaretçileri bu yönetim araçlarını kullanamaz.
+- **Video yükle → Konuşmacı analizi:** destekleyen STT sağlayıcısıyla konuşmacı ayrımını açın ve beklenen sayıyı 2–32 arasında belirtin. Analizden sonra video araç çubuğundaki **Konuşmacılar** alanından teknik etiketlere ad veya rol verin.
 
 Sözlük biçimi, her satırda `terim | açıklama`:
 
@@ -42,6 +43,7 @@ Alanlar yalnızca sahibin yönetim API'sinde döndürülür; paylaşım API'si h
 - Onay/geri yükleme eski konu ve vektörleri geçersiz kılar ve kalıcı iş kuyruğunu yeniden başlatır. STT tekrar çalışmaz; kabul edilmiş metin kullanılır. Başarıyla tamamlanınca SRT, konu başlıkları, indeks ve sohbet yeni metne dayanır. Sağlayıcı hatasında video başarısız durumda görünür; eski indeksle başarı gösterilmez. Sağlayıcılar kapalıysa yerel konu gruplama/alinti araması kullanılır, anlamsal indeks oluşmaz.
 - İnceleme gereken bir segmente atıf yapan sohbet cevabı sesle doğrulama uyarısı taşır. Metin sürümü değişince sohbet, yeniden yükleme sırasında temizlenir. Her sohbet cevabı metin sürümünü taşır; tarayıcı yanıtı göstermeden güncel kaydı kontrol eder, eski sürüm cevabını yeni kaynaklara bağlamaz. Soru sormadan izlemeye devam eden diğer açık sekmeleri/iframe'leri yeni metni görmek için yenileyin.
 - Bağlam değişikliği metni değiştirmez, mevcut kalite önerilerini geçersiz kılar ve konu/indeks işini tekrar kuyruğa alır.
+- Bitmiş bir kayıtta **Konuşmacılıya çevir** seçeneği yerinde bir etiketleme değildir. Video sesi aktif STT sağlayıcısına yeniden gönderilir; transkript, konu başlıkları ve indeks yeniden oluşturulur. Arayüz bu maliyet ve veri aktarımını gönderimden önce açıkça bildirir. Önceki metin sürüm geçmişine alınır. Konuşmacı kimlikleri yalnızca yeni transkriptte gerçekten dönen etiketler için tanımlanabilir ve SRT/VTT dışa aktarımında adla birlikte gösterilir.
 
 ## Güvenlik ve maliyet
 
@@ -55,4 +57,4 @@ SQLite ve Data Protection anahtarlarıyla birlikte metin geçmişi de yedeklenir
 
 .NET testleri gerçek FFmpeg ile hedefli ses çıkarma ve temizlemeyi; kontrollü sağlayıcılarla inceleme sözleşmesini; veri koruyan migration'ı, sürüm çakışmasını, sahipliği, CSRF'yi, eski indeksi geçersiz kılmayı ve ham metne dönüşü kapsar. Tarayıcı testi gerçek UI üzerinden sözlük yükleme/düzenleme, uyarı filtreleme, ses oynatma, düzeltme, SRT ve geri yükleme akışını doğrular. Test videosu sentetik sinyal içerir; insan konuşmasını doğru tanıma testi değildir.
 
-Gerçek ElevenLabs/OpenRouter kalite sonuçları bu teslimde doğrulanmadı. Ağ/anahtar aktivasyonu koşulları [PROVIDERS.md](PROVIDERS.md) içinde. OCR, öğrenilmiş VAD, sağlayıcıya özgü güven puanları ve ikinci sağlayıcıyla otomatik doğruluk uzlaşması yoktur. Eşik tabanlı sessizlik taraması, isteğe bağlı tüm metin AI incelemesi, kullanıcı başlatmalı ikinci STT ve ElevenLabs hizalama adaptörü eklendi; bunlar doğruluk garantisi değildir.
+Gerçek ElevenLabs/OpenRouter kalite sonuçları bu teslimde doğrulanmadı. Ağ/anahtar aktivasyonu koşulları [PROVIDERS.md](PROVIDERS.md) içinde. Konuşmacı ayrımı ElevenLabs ve sözleşmeye uyan n8n STT akışlarında vardır; OpenAI/Azure/local Whisper adaptörlerinde yoktur. OCR, öğrenilmiş VAD, sağlayıcıya özgü güven puanları ve ikinci sağlayıcıyla otomatik doğruluk uzlaşması yoktur. Eşik tabanlı sessizlik taraması, isteğe bağlı tüm metin AI incelemesi, kullanıcı başlatmalı ikinci STT ve ElevenLabs hizalama adaptörü eklendi; bunlar doğruluk garantisi değildir.

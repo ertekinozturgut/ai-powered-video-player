@@ -4,7 +4,7 @@ namespace VideoAtlas.Domain;
 public sealed class SensitiveDataAttribute : Attribute;
 
 public enum VideoStatus { Queued, Processing, AwaitingTranscript, Ready, Failed, Canceled }
-public sealed record TranscriptSegment(int Id, double Start, double End, [property: SensitiveData] string Text);
+public sealed record TranscriptSegment(int Id, double Start, double End, [property: SensitiveData] string Text, string? Speaker = null);
 public sealed record Chapter(string Title, string Summary, string Category, double Start, double End);
 public sealed record TranscriptVector(int[] SegmentIds, float[] Values);
 
@@ -44,16 +44,22 @@ public sealed partial class Video
     [SensitiveData] public List<VideoTerm> Terms { get; private set; } = [];
     [SensitiveData] public string AnalysisInstructions { get; private set; } = "";
     public string AnalysisLanguage { get; private set; } = "tr";
+    public bool SpeakerDiarizationEnabled { get; private set; }
+    public int? ExpectedSpeakerCount { get; private set; }
+    [SensitiveData] public Dictionary<string, string> SpeakerNames { get; private set; } = [];
     [SensitiveData] public List<TranscriptSegment> OriginalSegments { get; private set; } = [];
     [SensitiveData] public List<TranscriptRevision> TranscriptHistory { get; private set; } = [];
     [SensitiveData] public List<TranscriptIssue> TranscriptIssues { get; private set; } = [];
     public int TranscriptVersion { get; private set; }
     public int ReviewVersion { get; private set; }
-    public VideoContext Context => new(Terms, AnalysisInstructions, AnalysisLanguage);
+    public VideoContext Context => new(Terms, AnalysisInstructions, AnalysisLanguage, SpeakerDiarizationEnabled, ExpectedSpeakerCount, SpeakerNames);
 
     public void SetContext(VideoContext context)
     {
         Terms = context.Terms.ToList(); AnalysisInstructions = context.Instructions; AnalysisLanguage = context.Language;
+        SpeakerDiarizationEnabled = context.DiarizationEnabled;
+        ExpectedSpeakerCount = context.DiarizationEnabled ? context.SpeakerCount : null;
+        if (!context.DiarizationEnabled) SpeakerNames = [];
         TranscriptIssues = []; ReviewVersion++;
         ResetQualityProgress();
     }
@@ -64,35 +70,20 @@ public sealed partial class Video
         if (TranscriptHistory.Count == 0 && Segments.Count > 0)
             TranscriptHistory.Add(new(TranscriptVersion, now, "Önceki metin", Segments.ToArray()));
         Segments = next; TranscriptVersion++; ReviewVersion++;
+        SpeakerNames = SpeakerNames.Where(pair => next.Any(segment => segment.Speaker == pair.Key))
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
         TranscriptHistory.Add(new(TranscriptVersion, now, reason, next.ToArray()));
         TranscriptHistory = TranscriptHistory.TakeLast(10).ToList();
         TranscriptIssues = []; Chapters = []; Vectors = []; EmbeddingModel = null;
         ResetQualityProgress();
     }
-    public int ApplyAiSuggestions(IEnumerable<TranscriptIssue> issues, DateTimeOffset now)
-    {
-        var replacements = issues.Where(issue => issue.Source == "llm-batch" && !string.IsNullOrWhiteSpace(issue.Suggestion))
-            .GroupBy(issue => issue.SegmentId).ToDictionary(group => group.Key, group => group.Last().Suggestion!.Trim());
-        if (replacements.Count == 0) return 0;
-        var changed = 0;
-        var next = Segments.Select(segment =>
-        {
-            if (!replacements.TryGetValue(segment.Id, out var text) || text.Length > 16000 ||
-                text.Any(character => char.IsControl(character) && character is not ('\n' or '\t')) ||
-                string.Equals(segment.Text.Trim(), text, StringComparison.Ordinal)) return segment;
-            changed++;
-            return segment with { Text = text };
-        }).ToArray();
-        if (changed == 0) return 0;
-        if (OriginalSegments.Count == 0) OriginalSegments = Segments.ToList();
-        Segments = next.ToList(); TranscriptVersion++; ReviewVersion++;
-        TranscriptHistory.Add(new(TranscriptVersion, now, $"AI bağlam doğrulamalı otomatik düzeltme ({changed} bölüm)", next));
-        TranscriptHistory = TranscriptHistory.TakeLast(10).ToList();
-        Chapters = []; Vectors = []; EmbeddingModel = null;
-        return changed;
-    }
     public void SetIssues(IEnumerable<TranscriptIssue> issues)
-    { TranscriptIssues = issues.Take(300).ToList(); ReviewVersion++; }
+    {
+        TranscriptIssues = issues
+            .GroupBy(issue => new { issue.SegmentId, issue.Source, issue.Reason, issue.Suggestion, issue.SuggestedStart, issue.SuggestedEnd })
+            .Select(group => group.Last()).Take(300).ToList();
+        ReviewVersion++;
+    }
     public void ResolveIssue(Guid id)
     {
         TranscriptIssues = TranscriptIssues.Select(i => i.Id == id ? i with { Status = "dismissed" } : i).ToList();
@@ -102,6 +93,28 @@ public sealed partial class Video
     {
         if (index < 0 || index >= Chapters.Count) throw new InvalidOperationException("Chapter does not exist.");
         Chapters[index] = chapter;
+        ReviewVersion++;
+    }
+
+    public void PrepareFullReanalysis(VideoContext context, DateTimeOffset now)
+    {
+        if (Segments.Count > 0)
+        {
+            TranscriptHistory.Add(new(TranscriptVersion, now, context.DiarizationEnabled
+                ? "Konuşmacı ayrımlı yeniden analiz öncesi metin" : "Yeniden analiz öncesi metin", Segments.ToArray()));
+            TranscriptHistory = TranscriptHistory.TakeLast(10).ToList();
+        }
+        SetContext(context);
+        Segments = []; Chapters = []; Vectors = []; EmbeddingModel = null; TranscriptIssues = [];
+        TranscriptChunks = []; SpeakerNames = []; TranscriptVersion++; ReviewVersion++;
+        Requeue();
+    }
+
+    public void SetSpeakerNames(IReadOnlyDictionary<string, string> names)
+    {
+        var labels = Segments.Select(segment => segment.Speaker).Where(label => !string.IsNullOrWhiteSpace(label)).ToHashSet(StringComparer.Ordinal);
+        if (names.Keys.Any(key => !labels.Contains(key))) throw new InvalidOperationException("Unknown speaker label.");
+        SpeakerNames = names.Where(pair => !string.IsNullOrWhiteSpace(pair.Value)).ToDictionary(pair => pair.Key, pair => pair.Value.Trim(), StringComparer.Ordinal);
         ReviewVersion++;
     }
 
@@ -117,6 +130,8 @@ public sealed partial class Video
     public void Complete(IEnumerable<TranscriptSegment> segments, IEnumerable<Chapter> chapters, string mode)
     {
         Segments = segments.ToList();
+        SpeakerNames = SpeakerNames.Where(pair => Segments.Any(segment => segment.Speaker == pair.Key))
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
         if (OriginalSegments.Count == 0 && Segments.Count > 0) OriginalSegments = Segments.ToList();
         Chapters = chapters.ToList();
         Vectors = [];

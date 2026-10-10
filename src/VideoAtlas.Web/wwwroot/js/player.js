@@ -5,6 +5,7 @@ import { setupOperations } from './operations.js';
 const app = $('#player-app'), base = app.dataset.api, embedded = app.dataset.embedded === 'true';
 const video = $('#video');
 let detail, ready = false, history = [], asking = false, timer, activeId = -1, sourceSet = false, selectingSection = false;
+let observedProcessingStage = '', observedProcessingAt = 0;
 const review = embedded ? null : setupReview(base, () => detail, async () => { clearTimeout(timer); await load(); });
 const operations = embedded ? null : setupOperations(base, async () => { clearTimeout(timer); await load(); });
 const quickEdit = embedded ? null : $('#quick-edit-dialog');
@@ -31,8 +32,23 @@ function render() {
   if (detail.indexStatus === 'stale' || detail.indexStatus === 'missing') $('#analysis-label').textContent += ' · Anlamsal indeks için yeniden analiz gerekli';
   $('#chat-mode').textContent = detail.aiConfigured ? 'AI yanıtlarını kaynak konuşmalarla doğrulayın.' : 'Alıntı arama modu · AI bağlantısı yapılandırılmamış.';
   $('#processing-notice').hidden = !busy;
-  $('#processing-stage').textContent = v.stage;
-  $('#processing-progress').value = v.progress;
+  const isSpeechTranscription = busy && v.stage?.startsWith('Konuşma parçası');
+  if (busy && v.stage !== observedProcessingStage) {
+    observedProcessingStage = v.stage;
+    observedProcessingAt = Date.now();
+  } else if (!busy) {
+    observedProcessingStage = '';
+    observedProcessingAt = 0;
+  }
+  const elapsedSeconds = observedProcessingAt ? Math.max(0, Math.floor((Date.now() - observedProcessingAt) / 1000)) : 0;
+  const elapsedText = elapsedSeconds >= 60
+    ? `${Math.floor(elapsedSeconds / 60)} dk ${elapsedSeconds % 60} sn`
+    : `${elapsedSeconds} sn`;
+  $('#processing-stage').textContent = isSpeechTranscription
+    ? `${v.stage} · Ses modeli çalışıyor (${elapsedText})`
+    : v.stage;
+  if (isSpeechTranscription) $('#processing-progress').removeAttribute('value');
+  else $('#processing-progress').value = v.progress;
   $('#player-error').hidden = v.status !== 'Failed' && v.status !== 'AwaitingTranscript';
   $('#player-error').textContent = v.status === 'AwaitingTranscript' ? 'Otomatik transkripsiyon hazır değil veya ses bulunamadı. SRT dosyası içe aktarabilir ya da AI yapılandırmasını tamamlayıp yeniden analiz edebilirsiniz.' : errors[v.errorCode] ?? v.stage;
   $('#chat-question').disabled = !ready; $('#chat-submit').disabled = !ready || asking;
@@ -61,6 +77,8 @@ function render() {
   if (!embedded) {
     $('#share-open').disabled = !ready;
     $('#retry-video').disabled = busy;
+    $('#speaker-open').disabled = busy || !v.mediaReady;
+    $('[data-speaker-label]').textContent = detail.speakerDiarization || detail.speakers?.length ? 'Konuşmacılar' : 'Konuşmacılıya çevir';
     $('#delete-video').disabled = busy;
     $('#srt-file').disabled = busy || !v.mediaReady;
   }
@@ -75,16 +93,22 @@ function seek(seconds) {
 function renderTranscript() {
   const list = $('#transcript-list'); list.replaceChildren();
   const query = $('#transcript-search').value.toLocaleLowerCase('tr');
-  for (const segment of detail.segments.filter(s => s.text.toLocaleLowerCase('tr').includes(query))) {
+  const speakerName = segment => detail.speakers?.find(speaker => speaker.id === segment.speaker)?.name ?? segment.speaker?.replaceAll('_', ' ') ?? '';
+  for (const segment of detail.segments.filter(s => `${speakerName(s)} ${s.text}`.toLocaleLowerCase('tr').includes(query))) {
     const row = element('div', 'transcript-row'); row.dataset.id = segment.id;
     const seekButton = element('button', 'transcript-seek'); seekButton.type = 'button'; seekButton.title = 'Bu anda videoya git';
-    seekButton.append(element('span', 'timestamp', time(segment.start)), element('span', 'segment-text', segment.text));
+    seekButton.append(element('span', 'timestamp', time(segment.start)));
+    if (segment.speaker) seekButton.append(element('span', 'speaker-label', speakerName(segment)));
+    seekButton.append(element('span', 'segment-text', segment.text));
     seekButton.addEventListener('click', () => seek(segment.start)); row.append(seekButton);
+    const actions = element('div', 'segment-actions');
     if (detail.uncertainSegmentIds?.includes(segment.id)) {
-      row.append(element('span', 'review-badge', 'İnceleme gerekli'));
-      if (!embedded) { const inspect = element('button', 'inline-edit inline-inspect', 'AI öner'); inspect.type = 'button'; inspect.title = 'AI ile incele ve doğru alternatif öner'; inspect.setAttribute('aria-label', inspect.title); inspect.addEventListener('click', () => review?.inspectSegment(segment.id)); row.append(inspect); }
+      actions.append(element('span', 'review-badge', 'İnceleme gerekli'));
+      if (!embedded) { const inspect = element('button', 'inline-edit inline-inspect', 'AI öner'); inspect.type = 'button'; inspect.title = 'AI ile incele ve doğru alternatif öner'; inspect.setAttribute('aria-label', inspect.title); inspect.addEventListener('click', () => review?.inspectSegment(segment.id)); actions.append(inspect); }
     }
-    if (!embedded) row.append(editButton('Metni ve zamanı düzenle', () => openTranscriptEdit(segment))); list.append(row);
+    if (!embedded) actions.append(editButton('Metni ve zamanı düzenle', () => openTranscriptEdit(segment)));
+    if (actions.children.length) row.append(actions);
+    list.append(row);
   }
   if (!list.children.length) list.append(element('p', 'panel-empty', ready ? 'Bu sözcüklerle eşleşen konuşma yok.' : 'Metin dökümü hazır olduğunda burada görünecek.'));
   activeId = -1; highlight();
@@ -141,6 +165,12 @@ function message(role, text) {
   item.append(element('span', 'message-label', role === 'user' ? 'Siz' : '✦ VideoAtlas'), element('p', '', text));
   $('#chat-messages').append(item); item.scrollIntoView({block: 'nearest'}); return item;
 }
+function closeSectionSelection() {
+  selectingSection = false;
+  $('#chat-section').hidden = true;
+  if ($('#chat-action').value === 'section') $('#chat-action').value = 'question';
+  document.querySelectorAll('[data-chat-action]').forEach(button => button.classList.remove('selected'));
+}
 $('#chat-form').addEventListener('submit', async event => {
   event.preventDefault(); if (!ready || asking) return;
   const question = $('#chat-question').value.trim(); if (!question) return;
@@ -169,6 +199,7 @@ $('#chat-form').addEventListener('submit', async event => {
     }
     item.append(element('small', 'muted', answer.mode === 'ai' ? 'AI yanıtı · Kaynaklardan doğrulayın' : 'Alıntı araması · AI üretimi değildir'));
     if (answer.warning) item.append(element('p', 'quality-warning', answer.warning));
+    if (action === 'section') closeSectionSelection();
     history.push({role: 'user', content: question}, {role: 'assistant', content: answer.answer.slice(0, 4000)});
     item.scrollIntoView({block: 'nearest'});
   } catch (error) { loading.remove(); $('#chat-error').textContent = error.message; $('#chat-question').value = question; }
@@ -203,6 +234,62 @@ $('#clear-chat').addEventListener('click', () => { if (asking) return; history =
 if (!embedded) {
   setupSharing(base);
   const decimal = value => Number(String(value).trim().replace(',', '.'));
+  const speakerDialog = $('#speaker-dialog'), reanalysisDiarization = $('#reanalysis-diarization');
+  const updateSpeakerCount = () => {
+    const enabled = reanalysisDiarization.checked;
+    $('#reanalysis-speaker-count-field').hidden = !enabled;
+    $('#reanalysis-speaker-count').disabled = !enabled;
+    const unsupported = enabled && !detail.speakerDiarizationAvailable;
+    $('#reanalysis-error').textContent = unsupported ? errors.diarization_unsupported : '';
+    $('#reanalysis-submit').disabled = unsupported;
+  };
+  const openSpeakerDialog = () => {
+    const speakers = detail.speakers ?? [];
+    $('#speaker-identities').hidden = speakers.length === 0;
+    const fields = $('#speaker-name-fields'); fields.replaceChildren();
+    for (const speaker of speakers) {
+      const label = element('label'); label.textContent = speaker.id.replaceAll('_', ' ');
+      const input = element('input', 'form-control'); input.type = 'text'; input.maxLength = 80; input.value = speaker.name; input.dataset.speakerId = speaker.id;
+      label.append(input); fields.append(label);
+    }
+    $('#speaker-name-error').textContent = '';
+    reanalysisDiarization.checked = detail.speakerDiarization;
+    $('#reanalysis-speaker-count').value = detail.expectedSpeakerCount ?? Math.max(2, speakers.length || 2);
+    $('#reanalysis-warning').hidden = !ready;
+    $('#reanalysis-submit').textContent = ready ? 'Tam yeniden analizi başlat' : 'Analizi bu ayarlarla başlat';
+    updateSpeakerCount(); speakerDialog.showModal();
+  };
+  $('#speaker-open').addEventListener('click', openSpeakerDialog);
+  $('#retry-video').addEventListener('click', async () => {
+    if (detail.video.status !== 'Failed' || detail.segments.length === 0) { openSpeakerDialog(); return; }
+    const button = $('#retry-video'); button.disabled = true;
+    try {
+      await api(`${base}/retry`, {method:'POST'}); clearTimeout(timer); await load();
+      toast('Analiz tamamlanan metin korunarak kaldığı aşamadan sürdürüldü.');
+    } catch (error) { toast(error.message); button.disabled = false; }
+  });
+  reanalysisDiarization.addEventListener('change', updateSpeakerCount);
+  $('#speaker-names-form').addEventListener('submit', async event => {
+    event.preventDefault(); const button = $('button[type="submit"]', event.currentTarget); button.disabled = true; $('#speaker-name-error').textContent = '';
+    try {
+      const names = Object.fromEntries([...document.querySelectorAll('[data-speaker-id]')].map(input => [input.dataset.speakerId, input.value.trim()]));
+      await api(`${base}/speakers`, {method:'PUT', body:JSON.stringify({names})});
+      await load(true); toast('Konuşmacı adları kaydedildi.');
+    } catch (error) { $('#speaker-name-error').textContent = error.message; }
+    finally { button.disabled = false; }
+  });
+  $('#reanalysis-form').addEventListener('submit', async event => {
+    event.preventDefault(); const button = $('#reanalysis-submit'); button.disabled = true; $('#reanalysis-error').textContent = '';
+    try {
+      const enabled = reanalysisDiarization.checked;
+      const speakerCount = enabled ? Number($('#reanalysis-speaker-count').value) : null;
+      if (enabled && (!Number.isInteger(speakerCount) || speakerCount < 2 || speakerCount > 32)) throw new Error(errors.invalid_speaker_count);
+      await api(`${base}/reanalyze`, {method:'POST', body:JSON.stringify({speakerDiarization:enabled, speakerCount})});
+      speakerDialog.close(); clearTimeout(timer); await load();
+      toast(enabled ? 'Konuşmacı ayrımlı tam analiz başlatıldı.' : 'Konuşmacı ayrımı olmadan tam analiz başlatıldı.');
+    } catch (error) { $('#reanalysis-error').textContent = error.message; }
+    finally { button.disabled = false; updateSpeakerCount(); }
+  });
   $('#quick-edit-form').addEventListener('invalid', event => {
     event.preventDefault();
     $('#quick-edit-error').textContent = event.target === $('#quick-edit-verified') ? 'Kaydetmeden önce sesi dinlediğinizi onaylayın.' : 'Lütfen zorunlu alanları kontrol edin.';
@@ -230,11 +317,6 @@ if (!embedded) {
       toast(isTranscript ? 'Metin kaydedildi; konu başlıkları ve AI indeksi yeniden hazırlanıyor.' : 'Konu başlığı kaydedildi.');
     } catch (error) { $('#quick-edit-error').textContent = error.message; }
     finally { save.disabled = false; }
-  });
-  $('#retry-video').addEventListener('click', async () => {
-    $('#retry-video').disabled = true;
-    try { await api(`${base}/retry`, {method: 'POST'}); clearTimeout(timer); await load(); }
-    catch (error) { toast(error.message); $('#retry-video').disabled = false; }
   });
   $('#srt-file').addEventListener('change', async event => {
     const file = event.target.files[0]; if (!file) return;

@@ -1,0 +1,108 @@
+/* Shared minimum type scale for secondary text and compact controls. */
+.eyebrow,
+.workspace-label,
+.security-pill,
+.feature-pills span,
+.orb-caption,
+.count-badge,
+.duration-label,
+.status-badge,
+.category-label,
+.chapter-category,
+.embed-brand > span:last-child,
+.provider-panel > small,
+.provider-updated,
+.art-caption,
+.auth-story-copy .eyebrow,
+.auth-story-footer,
+.quick-actions-title,
+.section-time-input > span {
+  font-size: 11px;
+}
+
+.sidebar-note .eyebrow,
+.intro-banner .eyebrow,
+.player-heading .eyebrow,
+.chat-welcome .eyebrow {
+  font-size: 10px;
+}
+
+.sidebar-note p,
+.account-block strong,
+.signout,
+.topbar,
+.notice p,
+.search-box input,
+.card-body p,
+.card-footer,
+.empty-state small,
+.pagination-controls,
+.stack-form small,
+.drop-zone > span:not(.empty-icon),
+.drop-zone small,
+.check-label,
+.code-field,
+.video-meta,
+.heading-actions .btn,
+.video-foot,
+.panel-tabs button,
+.transcript-search input,
+.timestamp,
+.owner-tools .btn,
+#category-filter,
+.inline-edit,
+.chapter-number,
+.chapter-body > .muted,
+.chat-heading p,
+.chat-welcome p,
+.suggestions button,
+.chat-input textarea,
+.chat-form small,
+.message-label,
+.chat-message > small,
+.provider-option p,
+.provider-savebar span,
+.n8n-template-grid p,
+.n8n-guide ol,
+.n8n-guide p,
+.forgot-password-link,
+.auth-card > .small,
+.nav-item,
+.quick-action,
+.section-range-heading p,
+.section-time-field,
+.section-range-card #section-confirm,
+.translation-row small,
+.language-chip-list .btn small {
+  font-size: 12px;
+}
+
+.account-block small,
+.panel-tabs > span,
+.citations small {
+  font-size: 11px;
+}
+
+.operation-metric small,
+.operation-metric span,
+.section-heading p,
+.usage-note,
+.operations-table,
+.operations-table th,
+.job-status,
+.cancel-requested,
+.operations-table code,
+.operations-empty p,
+.operations-table td::before {
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .panel-tabs button,
+  .video-foot,
+  .feature-pills span,
+  .heading-actions .btn,
+  .signout {
+    font-size: 11px;
+  }
+}

@@ -43,6 +43,12 @@ $('#video-file').addEventListener('change', () => {
   const file = $('#video-file').files[0];
   if (file && !$('#video-title').value) $('#video-title').value = file.name.replace(/\.[^.]+$/, '').slice(0, 180);
 });
+const uploadDiarization = $('#upload-diarization'), uploadSpeakerCountField = $('#upload-speaker-count-field'), uploadSpeakerCount = $('#upload-speaker-count');
+uploadDiarization.addEventListener('change', () => {
+  uploadSpeakerCountField.hidden = !uploadDiarization.checked;
+  uploadSpeakerCount.disabled = !uploadDiarization.checked;
+  if (uploadDiarization.checked) uploadSpeakerCount.focus();
+});
 const drop = $('#drop-zone');
 for (const type of ['dragover', 'dragenter']) drop.addEventListener(type, event => { event.preventDefault(); drop.classList.add('dragging'); });
 drop.addEventListener('dragleave', () => drop.classList.remove('dragging'));

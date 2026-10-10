@@ -27,6 +27,32 @@ public sealed class TranscriptQualityTests
         Assert.Throws<AppException>(() => TranscriptQuality.ValidateContext([], new string('x', 4001)));
         Assert.Throws<AppException>(() => TranscriptQuality.ValidateContext(Enumerable.Range(0, 51).Select(i => new VideoTerm($"t{i}", "desc")).ToArray(), ""));
     }
+    [Fact] public void SpeakerAnalysisSettingsAreValidated()
+    {
+        var context = TranscriptQuality.ValidateContext([], "", "tr", true, 3);
+        Assert.True(context.DiarizationEnabled); Assert.Equal(3, context.SpeakerCount);
+        Assert.Throws<AppException>(() => TranscriptQuality.ValidateContext([], "", "tr", true, 1));
+        Assert.Throws<AppException>(() => TranscriptQuality.ValidateContext([], "", "tr", true, 33));
+        var disabled = TranscriptQuality.ValidateContext([], "", "tr", false, 3);
+        Assert.False(disabled.DiarizationEnabled); Assert.Null(disabled.SpeakerCount);
+    }
+    [Fact] public void FullReanalysisKeepsSettingsArchivesTextAndClearsDerivedSpeakerData()
+    {
+        var video = new Video(Guid.NewGuid(), "owner", "Interview", 1, TimeProvider.System.GetUtcNow());
+        video.SetMedia(10);
+        video.SetContext(TranscriptQuality.ValidateContext([], "", "tr", true, 2));
+        video.Complete([new(0, 0, 4, "Merhaba", "speaker_0"), new(1, 4, 8, "Hoş bulduk", "speaker_1")],
+            [new("Giriş", "Tanışma", "Genel", 0, 8)], "ai");
+        video.SetSpeakerNames(new Dictionary<string, string> { ["speaker_0"] = "Sunucu", ["speaker_1"] = "Konuk" });
+        var transcriptVersion = video.TranscriptVersion;
+
+        video.PrepareFullReanalysis(TranscriptQuality.ValidateContext([], "Yeni analiz", "tr", true, 3), TimeProvider.System.GetUtcNow());
+
+        Assert.Equal(VideoStatus.Queued, video.Status); Assert.True(video.SpeakerDiarizationEnabled);
+        Assert.Equal(3, video.ExpectedSpeakerCount); Assert.Empty(video.Segments); Assert.Empty(video.Chapters);
+        Assert.Empty(video.SpeakerNames); Assert.True(video.TranscriptVersion > transcriptVersion);
+        Assert.Contains(video.TranscriptHistory, revision => revision.Reason.Contains("Konuşmacı ayrımlı", StringComparison.Ordinal));
+    }
     [Fact] public void HeuristicsFlagRepetitionDensityAndOverlapButNotNormalTopicChanges()
     {
         var segments = new[] { new TranscriptSegment(0, 0, 5, "Bütçe konuşuluyor."), new TranscriptSegment(1, 4, 4.1, "Bütçe konuşuluyor.") };
@@ -52,6 +78,18 @@ public sealed class TranscriptQualityTests
         await review.RestoreAsync(v.Id, "owner", -1, v.ReviewVersion, default);
         Assert.Equal(old, v.Segments[1]); Assert.Equal(3, v.TranscriptVersion);
         Assert.Contains(v.TranscriptHistory, r => r.Reason == "Ham metne dönüş");
+    }
+    [Fact] public void RepeatedAiReviewIssuesAreDeduplicatedWithoutChangingTranscript()
+    {
+        var video = new MemoryStore().Video;
+        var text = video.Segments[0].Text;
+        var first = new TranscriptIssue(Guid.NewGuid(), 0, "Aynı uyarı", null, "llm-batch");
+        var second = first with { Id = Guid.NewGuid() };
+
+        video.SetIssues([first, second]);
+
+        Assert.Single(video.TranscriptIssues);
+        Assert.Equal(text, video.Segments[0].Text);
     }
     [Fact] public void HistoryRetentionIsBoundedButOriginalIsNeverReplaced()
     {
@@ -159,6 +197,7 @@ public sealed class TranscriptQualityTests
         Assert.Equal(video.Segments, video.OriginalSegments); Assert.Equal(1, video.TranscriptVersion);
         Assert.Empty(video.Terms); Assert.Empty(video.TranscriptHistory); Assert.Empty(video.TranscriptIssues);
         Assert.Empty(video.ProcessingSteps); Assert.Empty(video.TranscriptChunks); Assert.Empty(video.ShareViewers);
+        Assert.False(video.SpeakerDiarizationEnabled); Assert.Null(video.ExpectedSpeakerCount); Assert.Empty(video.SpeakerNames);
         Assert.True(video.ShareChat); Assert.True(video.ShareTranscript); Assert.True(video.ShareChapters);
         Assert.Equal("orbital", video.ShareTheme); Assert.Null(video.DeleteAfter);
     }

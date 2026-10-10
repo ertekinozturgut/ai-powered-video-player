@@ -256,6 +256,9 @@ namespace VideoAtlas.Infrastructure.Migrations
                     b.Property<string>("ErrorCode")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("ExpectedSpeakerCount")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("FrameOrigins")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -328,6 +331,13 @@ namespace VideoAtlas.Infrastructure.Migrations
 
                     b.Property<long>("SourceBytes")
                         .HasColumnType("INTEGER");
+
+                    b.Property<bool>("SpeakerDiarizationEnabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SpeakerNames")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Stage")
                         .IsRequired()

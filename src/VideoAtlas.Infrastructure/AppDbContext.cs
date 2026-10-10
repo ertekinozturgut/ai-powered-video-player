@@ -59,6 +59,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
             .Metadata.SetValueComparer(Comparer<string>());
         video.Property(v => v.Terms).HasConversion(v => Serialize(v), v => Deserialize<VideoTerm>(v))
             .Metadata.SetValueComparer(Comparer<VideoTerm>());
+        video.Property(v => v.SpeakerNames).HasConversion(v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                v => JsonSerializer.Deserialize<Dictionary<string, string>>(v) ?? new())
+            .Metadata.SetValueComparer(new ValueComparer<Dictionary<string, string>>(
+                (a, b) => a != null && b != null && a.OrderBy(x => x.Key).SequenceEqual(b.OrderBy(x => x.Key)),
+                value => value.OrderBy(x => x.Key).Aggregate(0, (hash, pair) => HashCode.Combine(hash, pair.Key, pair.Value)),
+                value => value.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)));
         video.Property(v => v.OriginalSegments).HasConversion(v => Serialize(v), v => Deserialize<TranscriptSegment>(v))
             .Metadata.SetValueComparer(Comparer<TranscriptSegment>());
         video.Property(v => v.TranscriptHistory).HasConversion(v => Serialize(v), v => Deserialize<TranscriptRevision>(v))

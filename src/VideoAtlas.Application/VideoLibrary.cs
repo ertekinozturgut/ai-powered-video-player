@@ -5,6 +5,7 @@ namespace VideoAtlas.Application;
 
 public sealed record LibraryLimits(long MaxUploadBytes, long UserQuotaBytes);
 public sealed record UploadCommand(string Owner, string Title, long Length, bool Consent, Stream Content, VideoContext? Context = null, bool FullReview = false);
+public sealed record ReanalysisCommand(bool SpeakerDiarization, int? SpeakerCount);
 public sealed record ShareCommand(int Days, IReadOnlyList<string> Origins, SharePresentation? Presentation = null,
     bool RequireLogin = false, IReadOnlyList<string>? Viewers = null);
 public sealed record ShareAudienceOption(string Id, string Email);
@@ -32,7 +33,8 @@ public sealed class VideoLibrary(IVideoStore videos, ILibraryStore library, IMed
         if (await library.UsedBytesAsync(command.Owner, ct) + command.Length > limits.UserQuotaBytes)
             throw new AppException(409, "storage_quota", "Kütüphane kotanız doldu. Önce eski videolardan bazılarını silin.");
         var video = new Video(Guid.NewGuid(), command.Owner, command.Title.Trim(), command.Length, clock.GetUtcNow());
-        if (command.Context is not null) video.SetContext(TranscriptQuality.ValidateContext(command.Context.Terms, command.Context.Instructions));
+        if (command.Context is not null) video.SetContext(TranscriptQuality.ValidateContext(command.Context.Terms, command.Context.Instructions,
+            command.Context.Language, command.Context.DiarizationEnabled, command.Context.SpeakerCount));
         if (command.FullReview) video.ConfigureFullReview(true);
         try { await files.SaveUploadAsync(video.Id, command.Content, ct); await videos.AddAsync(video, ct); }
         catch (Exception) { files.Delete(video.Id); throw; }
@@ -48,6 +50,24 @@ public sealed class VideoLibrary(IVideoStore videos, ILibraryStore library, IMed
     {
         VideoAccess.RequireIdle(video);
         video.Requeue();
+        await videos.SaveAsync(ct);
+    }
+    public async Task ReanalyzeAsync(Video video, ReanalysisCommand command, CancellationToken ct)
+    {
+        VideoAccess.RequireIdle(video);
+        var context = TranscriptQuality.ValidateContext(video.Terms, video.AnalysisInstructions, video.AnalysisLanguage,
+            command.SpeakerDiarization, command.SpeakerCount);
+        video.PrepareFullReanalysis(context, clock.GetUtcNow());
+        await videos.SaveAsync(ct);
+    }
+    public async Task SaveSpeakerNamesAsync(Video video, IReadOnlyDictionary<string, string> names, CancellationToken ct)
+    {
+        VideoAccess.RequireIdle(video);
+        if (names.Count > 32 || names.Any(pair => pair.Key.Length is 0 or > 80 || pair.Value.Length > 80 ||
+            pair.Value.Any(character => char.IsControl(character))))
+            throw new AppException(400, "invalid_speaker_names", "Konuşmacı adları en fazla 80 karakter olmalıdır.");
+        try { video.SetSpeakerNames(names); }
+        catch (InvalidOperationException) { throw new AppException(400, "invalid_speaker_names", "Yalnızca analizde bulunan konuşmacılar adlandırılabilir."); }
         await videos.SaveAsync(ct);
     }
     public async Task ImportAsync(Video video, string srt, CancellationToken ct)

@@ -35,6 +35,7 @@ public sealed class ProviderConnection(string id, string kind, string endpoint, 
 public interface ISpeechToTextAdapter
 {
     string Kind { get; }
+    bool SupportsSpeakerDiarization => false;
     Task<IReadOnlyList<TranscriptSegment>> TranscribeAsync(ProviderConnection connection, string audioPath, double offset, CancellationToken ct);
     Task<IReadOnlyList<TranscriptSegment>> TranscribeAsync(ProviderConnection connection, string audioPath, double offset, VideoContext context, CancellationToken ct) => TranscribeAsync(connection, audioPath, offset, ct);
 }

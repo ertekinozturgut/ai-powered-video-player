@@ -41,6 +41,8 @@ public sealed partial class LocalizationTests : IClassFixture<VideoAppFactory>
         Assert.Equal("en", catalog.Language);
         Assert.Contains("en", catalog.Supported);
         Assert.Equal("Video library", catalog.Texts["Video kütüphanesi"]);
+        Assert.Equal("Speaker analysis", catalog.Texts["Konuşmacı analizi"]);
+        Assert.Equal("Convert to speaker-separated", catalog.Texts["Konuşmacılıya çevir"]);
         Assert.Contains("no-store", (await client.GetAsync("/api/localization")).Headers.CacheControl?.ToString());
     }
 

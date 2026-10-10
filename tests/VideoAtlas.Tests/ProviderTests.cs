@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
 using VideoAtlas.Application;
+using VideoAtlas.Domain;
 using VideoAtlas.Infrastructure;
 using Xunit;
 
@@ -14,6 +15,11 @@ namespace VideoAtlas.Tests;
 
 public sealed class ProviderTests
 {
+    [Fact] public void LocalWhisperSupportsOnDeviceSpeakerDiarization()
+    {
+        var adapter = new LocalWhisperSpeechAdapter(Microsoft.Extensions.Logging.Abstractions.NullLogger<LocalWhisperSpeechAdapter>.Instance);
+        Assert.True(adapter.SupportsSpeakerDiarization);
+    }
     [Fact] public async Task EnvironmentBindingsAreReferencedAtRuntimeAndNeverPersistedAsSecrets()
     {
         await using var app = new EnvironmentCredentialsAppFactory(); using var client = app.CreateClient();
@@ -97,6 +103,28 @@ public sealed class ProviderTests
         await using var services = ProviderTestServices.Create(handler).BuildServiceProvider();
         var path = Path.GetTempFileName();
         try { await Assert.ThrowsAsync<AiException>(() => new ElevenLabsSpeechAdapter(services.GetRequiredService<ProviderTransport>()).TranscribeAsync(Connection("elevenlabs"), path, 0, default)); }
+        finally { File.Delete(path); }
+    }
+    [Fact] public async Task ElevenLabsRequestsDiarizationAndSeparatesSpeakers()
+    {
+        var handler = new CaptureHandler(new { words = new[]
+        {
+            new { type = "word", text = "Merhaba.", start = 0d, end = 1d, speaker_id = "speaker_0" },
+            new { type = "word", text = "Hoş", start = 1.1d, end = 1.5d, speaker_id = "speaker_1" },
+            new { type = "word", text = "bulduk.", start = 1.6d, end = 2.2d, speaker_id = "speaker_1" }
+        } });
+        await using var services = ProviderTestServices.Create(handler).BuildServiceProvider();
+        var path = Path.GetTempFileName();
+        try
+        {
+            var context = new VideoContext([], "", "tr", true, 2);
+            var segments = await new ElevenLabsSpeechAdapter(services.GetRequiredService<ProviderTransport>())
+                .TranscribeAsync(Connection("elevenlabs", "scribe_v2"), path, 0, context, default);
+            Assert.Equal(2, segments.Count); Assert.Equal("speaker_0", segments[0].Speaker);
+            Assert.Equal("speaker_1", segments[1].Speaker); Assert.Equal("Hoş bulduk.", segments[1].Text);
+            Assert.Contains("name=diarize", handler.Body); Assert.Contains("true", handler.Body);
+            Assert.Contains("name=num_speakers", handler.Body); Assert.Contains("2", handler.Body);
+        }
         finally { File.Delete(path); }
     }
     [Fact] public async Task AzureSpeechConvertsMillisecondsAndUsesSubscriptionKey()

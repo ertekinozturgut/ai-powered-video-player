@@ -11,7 +11,8 @@ public sealed class VideoPipeline(AppDbContext db, MediaProcessor media, VideoIn
 {
     public static string SpeechFingerprint(ProviderConnection connection, VideoContext context) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join('|', connection.Kind, connection.Endpoint,
-            connection.Model, JsonSerializer.Serialize(context.Terms), "speech-windows-v2"))));
+            connection.Model, JsonSerializer.Serialize(context.Terms), context.DiarizationEnabled, context.SpeakerCount,
+            "speech-windows-v6-temporal-acoustic-diarization"))));
 
     public async Task RunAsync(Video video, CancellationToken ct)
     {
@@ -24,12 +25,16 @@ public sealed class VideoPipeline(AppDbContext db, MediaProcessor media, VideoIn
         {
             var route = await providers.SpeechAsync(ct);
             if (route is null) { video.AwaitTranscript(); video.Step("speech", "Konuşmayı metne çevirme", "waiting", clock.GetUtcNow()); return; }
+            if (video.Context.DiarizationEnabled && !route.Adapter.SupportsSpeakerDiarization)
+                throw new AppException(409, "diarization_unsupported", "Aktif STT sağlayıcısı konuşmacı ayrımını desteklemiyor. ElevenLabs veya uyumlu bir n8n STT akışı seçin.");
             var fingerprint = SpeechFingerprint(route.Connection, video.Context);
             if (video.TranscriptChunks.Any(c => c.Fingerprint != fingerprint))
                 throw new AppException(409, "stt_checkpoint_mismatch", "Tamamlanan ses parçaları farklı STT/model/sözlüğe ait. Eski ayara dönün veya ses kontrol noktalarını açıkça sıfırlayın.");
             await StageAsync(video, "speech", "Konuşmayı metne çevirme", 15, async () =>
             {
-                var windows = await media.TranscriptionWindowsAsync(video.Id, video.Duration, ct);
+                var windows = video.Context.DiarizationEnabled
+                    ? new[] { new SilenceInterval(0, video.Duration) }
+                    : await media.TranscriptionWindowsAsync(video.Id, video.Duration, ct);
                 foreach (var window in windows)
                 {
                     ct.ThrowIfCancellationRequested();
@@ -72,7 +77,6 @@ public sealed class VideoPipeline(AppDbContext db, MediaProcessor media, VideoIn
             // imported transcript, local topics, extractive chat, or sharing.
             if (video.FullReviewEnabled && await ai.IsConfiguredAsync(ct))
             {
-                var automaticSuggestions = new List<TranscriptIssue>();
                 while (video.QualityCursor < video.Segments.Count)
                 {
                     ct.ThrowIfCancellationRequested();
@@ -82,21 +86,18 @@ public sealed class VideoPipeline(AppDbContext db, MediaProcessor media, VideoIn
                     // One preceding context segment reduces artificial boundary drift.
                     var context = video.Segments.Skip(Math.Max(0, video.QualityCursor - 1)).Take(batch.Length + (video.QualityCursor > 0 ? 1 : 0)).ToArray();
                     usage.SetOperation("quality-scan");
-                    var issues = await reviewer.InspectBatchAsync(context, video.Context, ct);
+                    IReadOnlyList<TranscriptIssue> issues;
+                    try { issues = await reviewer.InspectBatchAsync(context, video.Context, ct); }
+                    catch (AiException exception) when (exception.Code == "ai_invalid_response")
+                    {
+                        // A malformed optional review response must not invalidate a
+                        // successfully produced transcript. Keep deterministic local
+                        // findings and continue with the next batch.
+                        issues = [];
+                    }
                     var scoped = issues.Where(i => batch.Any(s => s.Id == i.SegmentId)).ToArray();
-                    automaticSuggestions.AddRange(scoped);
                     video.AdvanceQuality(video.QualityCursor + batch.Length, scoped);
                     video.Report($"Kalite incelemesi: {video.QualityCursor}/{video.Segments.Count} konuşma", 65 + (int)(12d * video.QualityCursor / video.Segments.Count));
-                    await db.SaveChangesAsync(ct);
-                }
-                var applied = video.ApplyAiSuggestions(automaticSuggestions, clock.GetUtcNow());
-                if (applied > 0)
-                {
-                    // Applied suggestions are recorded in transcript history; retain only review items
-                    // that still need a human decision, then rebuild local checks for the new text.
-                    var retained = video.TranscriptIssues.Where(issue => issue.Source != "llm-batch").ToArray();
-                    video.SetIssues(retained.Concat(TranscriptQuality.Detect(video.Segments, video.Context)));
-                    video.Report($"AI önerileri uygulandı: {applied} bölüm", 78);
                     await db.SaveChangesAsync(ct);
                 }
             }

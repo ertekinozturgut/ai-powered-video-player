@@ -63,6 +63,8 @@ public sealed class PipelineRecoveryTests
             Assert.Equal(40, v.QualityCursor); Assert.Contains(v.TranscriptIssues, i => i.Source == "silence"); Assert.True(v.SilenceChecked);
             v.Requeue(); v.StartAttempt(); await scope.ServiceProvider.GetRequiredService<VideoPipeline>().RunAsync(v, default); await db.SaveChangesAsync();
             Assert.Equal(60, v.QualityCursor); Assert.Equal(3, reviewer.Calls); Assert.Equal(39, reviewer.FirstIds[^1]); Assert.Equal(VideoStatus.Ready, v.Status);
+            Assert.Equal("Metin", v.Segments[0].Text);
+            Assert.Contains(v.TranscriptIssues, issue => issue.Source == "llm-batch" && issue.SegmentId == 0);
         }
     }
     [Fact] public async Task WorkerCancelsInFlightProviderAndDeletesOnlyExplicitlyExpiredVideos()
@@ -119,7 +121,13 @@ public sealed class PipelineRecoveryTests
     {
         public int Calls; public List<int> FirstIds { get; } = [];
         public Task<IReadOnlyList<TranscriptIssue>> InspectBatchAsync(IReadOnlyList<TranscriptSegment> segments, VideoContext context, CancellationToken ct)
-        { Calls++; FirstIds.Add(segments[0].Id); if (Calls == 2) throw new AiException("ai_unavailable"); return Task.FromResult<IReadOnlyList<TranscriptIssue>>([]); }
+        {
+            Calls++; FirstIds.Add(segments[0].Id);
+            if (Calls == 2) throw new AiException("ai_unavailable");
+            return Task.FromResult<IReadOnlyList<TranscriptIssue>>(Calls == 1
+                ? [new(Guid.NewGuid(), segments[0].Id, "Metni sesle doğrulayın", "Spekülatif değişiklik", "llm-batch")]
+                : []);
+        }
         public Task<TranscriptIssue?> InspectAsync(IReadOnlyList<TranscriptSegment> s, int id, VideoContext c, CancellationToken ct) => Task.FromResult<TranscriptIssue?>(null);
         public Task<TranscriptIssue> RetranscribeAsync(Guid id, double duration, TranscriptSegment s, CancellationToken ct) => throw new NotSupportedException();
     }

@@ -6,6 +6,12 @@
         <label id="drop-zone" class="drop-zone" for="video-file"><span class="empty-icon">↑</span><strong>@u["upload.file"]</strong><span>@u["upload.fileHelp"]</span><small>MP4, MOV, WebM · 512 MiB · 2 hours</small></label>
         <input id="video-file" name="file" type="file" accept="video/mp4,video/quicktime,video/webm,video/x-matroska" required class="form-control" />
         <div><label for="video-title">@u["upload.videoTitle"]</label><input id="video-title" name="title" class="form-control" maxlength="180" required placeholder="Örnek video başlığı" /></div>
+        <fieldset class="speaker-analysis-options">
+            <legend>Konuşmacı analizi</legend>
+            <label class="check-label"><input id="upload-diarization" name="speakerDiarization" type="checkbox" value="true" /><span>Konuşmacıları ayırarak metne çevir</span></label>
+            <div id="upload-speaker-count-field" hidden><label for="upload-speaker-count">Konuşmacı sayısı</label><input id="upload-speaker-count" name="speakerCount" type="number" min="2" max="32" value="2" class="form-control" disabled required /><small class="muted">2–32 arasında, videoda konuşan toplam kişi sayısını girin.</small></div>
+            <small class="muted">Konuşmacı ayrımı etkin STT sağlayıcısı tarafından desteklenmelidir ve ek ücret doğurabilir.</small>
+        </fieldset>
         <details class="context-fields"><summary>Videoya özel terimler ve analiz yönergeleri (isteğe bağlı)</summary>
             <label for="upload-terms">@u["upload.terms"]</label><textarea id="upload-terms" name="terms" class="form-control" rows="3" maxlength="32000" placeholder="TERİM_1 | Örnek açıklama"></textarea>
             <small class="muted">En fazla 50 terim. Terim 100, açıklama 500 karakter; her terim ayrı satırda.</small>
