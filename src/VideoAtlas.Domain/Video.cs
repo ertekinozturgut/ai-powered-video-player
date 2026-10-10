@@ -69,6 +69,28 @@ public sealed partial class Video
         TranscriptIssues = []; Chapters = []; Vectors = []; EmbeddingModel = null;
         ResetQualityProgress();
     }
+    public int ApplyAiSuggestions(IEnumerable<TranscriptIssue> issues, DateTimeOffset now)
+    {
+        var replacements = issues.Where(issue => issue.Source == "llm-batch" && !string.IsNullOrWhiteSpace(issue.Suggestion))
+            .GroupBy(issue => issue.SegmentId).ToDictionary(group => group.Key, group => group.Last().Suggestion!.Trim());
+        if (replacements.Count == 0) return 0;
+        var changed = 0;
+        var next = Segments.Select(segment =>
+        {
+            if (!replacements.TryGetValue(segment.Id, out var text) || text.Length > 16000 ||
+                text.Any(character => char.IsControl(character) && character is not ('\n' or '\t')) ||
+                string.Equals(segment.Text.Trim(), text, StringComparison.Ordinal)) return segment;
+            changed++;
+            return segment with { Text = text };
+        }).ToArray();
+        if (changed == 0) return 0;
+        if (OriginalSegments.Count == 0) OriginalSegments = Segments.ToList();
+        Segments = next.ToList(); TranscriptVersion++; ReviewVersion++;
+        TranscriptHistory.Add(new(TranscriptVersion, now, $"AI bağlam doğrulamalı otomatik düzeltme ({changed} bölüm)", next));
+        TranscriptHistory = TranscriptHistory.TakeLast(10).ToList();
+        Chapters = []; Vectors = []; EmbeddingModel = null;
+        return changed;
+    }
     public void SetIssues(IEnumerable<TranscriptIssue> issues)
     { TranscriptIssues = issues.Take(300).ToList(); ReviewVersion++; }
     public void ResolveIssue(Guid id)
@@ -111,11 +133,11 @@ public sealed partial class Video
         Report("İşlem tamamlanamadı; ayrıntıyı kontrol edip yeniden deneyin", 0);
     }
     public void Requeue() { Status = VideoStatus.Queued; ErrorCode = null; CancelRequested = false; Report("İşleme sırası bekleniyor", 0); }
-    public void Share(string hash, DateTimeOffset expiresAt, string origins)
+    public void Share(string hash, DateTimeOffset? expiresAt, string origins)
     { ShareHash = hash; ShareExpiresAt = expiresAt; FrameOrigins = origins; }
     public void RevokeShare() { ShareHash = null; ShareExpiresAt = null; FrameOrigins = "'none'"; }
     public void SetIndex(IEnumerable<TranscriptVector> vectors, string model) { Vectors = vectors.ToList(); EmbeddingModel = model; }
-    public bool CanShare(DateTimeOffset now) => Status == VideoStatus.Ready && ShareHash is not null && ShareExpiresAt > now;
+    public bool CanShare(DateTimeOffset now) => Status == VideoStatus.Ready && ShareHash is not null && (ShareExpiresAt is null || ShareExpiresAt > now);
     public bool ReserveChat(string day, int limit)
     {
         if (ChatDay != day) { ChatDay = day; DailyChatCount = 0; }

@@ -124,7 +124,7 @@ public sealed class ProviderTests
     {
         var handler = new CaptureHandler(new { content = "{\"answer\":\"Akış yanıtı\",\"segmentIds\":[1]}" });
         await using var services = ProviderTestServices.Create(handler).BuildServiceProvider();
-        var route = new ProviderConnection("workflow", "n8n", "https://flow.example.invalid/webhook/chat", "v1", 512, "synthetic-secret");
+        var route = new ProviderConnection("workflow", "n8n", "https://tenant.app.n8n.cloud/webhook/chat", "v1", 512, "synthetic-secret");
         var result = await new N8nAdapter(services.GetRequiredService<ProviderTransport>()).CompleteJsonAsync(route, "system", "data", default);
         Assert.Contains("Akış", result); Assert.Equal("/webhook/chat", handler.Path); Assert.Contains("contractVersion", handler.Body);
     }

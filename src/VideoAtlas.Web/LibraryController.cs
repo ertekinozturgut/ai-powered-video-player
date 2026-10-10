@@ -7,7 +7,7 @@ using VideoAtlas.Application;
 namespace VideoAtlas.Web;
 
 [Authorize, ApiController, Route("api/videos")]
-public sealed class LibraryController(IVideoStore store, VideoLibrary library, VideoAccess access, TimeProvider clock, IVideoIntelligence intelligence) : ControllerBase
+public sealed class LibraryController(IVideoStore store, VideoLibrary library, VideoAccess access, TimeProvider clock, IVideoIntelligence intelligence, IShareAudience audience) : ControllerBase
 {
     private string Owner => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
     [HttpGet]
@@ -43,6 +43,12 @@ public sealed class LibraryController(IVideoStore store, VideoLibrary library, V
     {
         var token = await library.ShareAsync(await access.OwnedAsync(id, Owner, ct), new(form.Days, form.Origins, form.Presentation, form.RequireLogin, form.Viewers), ct);
         return Ok(new { path = $"/embed/{token}", requireLogin = form.RequireLogin });
+    }
+    [HttpGet("{id:guid}/share/audience")]
+    public async Task<IActionResult> ShareAudience(Guid id, CancellationToken ct)
+    {
+        _ = await access.OwnedAsync(id, Owner, ct);
+        return Ok(await audience.ListAsync(ct));
     }
     [HttpDelete("{id:guid}/share"), TypeFilter(typeof(MutationFilter))]
     public async Task<IActionResult> Revoke(Guid id, CancellationToken ct)

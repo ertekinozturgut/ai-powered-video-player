@@ -1,5 +1,49 @@
 @model OperationsAdminView
-@{ ViewData["Title"] = "İşlemler ve kullanım"; }
-<header class="topbar"><h1>İşlemler ve kullanım</h1><a href="/admin/providers">Sağlayıcı ayarları →</a></header>
-<section class="operations-panel"><h2>Bugün (UTC)</h2><p>@Model.Today.Calls API çağrısı · @Model.Today.FailedOrUncertain başarısız / belirsiz · @Model.Today.AudioMinutes.ToString("F1") ses dakikası</p><p>Tahmini $@Model.Today.EstimatedUsd.ToString("F4") · Sağlayıcının bildirdiği $@Model.Today.ReportedUsd.ToString("F4") · Tarifesi bilinmeyen @Model.Today.UnpricedCalls çağrı</p><p class="muted">Tahminler fatura değildir. Bilinmeyen tarifeler dolar sınırında hesaplanamaz; çağrı sınırı yine uygulanır. Hesap başına günlük @Model.DailyCallLimit çağrı / $@Model.DailyEstimatedBudgetUsd tahmini bütçe. Kesilmiş çağrılar da ücret doğurabilir.</p></section>
-<section class="operations-panel"><h2>Son 100 video işlemi</h2><div class="table-responsive"><table class="table"><thead><tr><th>Video</th><th>Durum</th><th>Adım</th><th>Deneme</th><th>Hata kodu</th></tr></thead><tbody>@foreach (var job in Model.Jobs) { <tr><td>@job.Title</td><td>@job.Status @(job.CancelRequested ? "(iptal istendi)" : "")</td><td>@job.Stage</td><td>@job.Attempts</td><td>@job.ErrorCode</td></tr> }</tbody></table></div></section>
+@{
+    ViewData["Title"] = "İşlemler ve kullanım";
+    var callPercent = Model.DailyCallLimit > 0 ? Math.Min(100, Model.Today.Calls * 100d / Model.DailyCallLimit) : 0;
+    var budgetPercent = Model.DailyEstimatedBudgetUsd > 0 ? Math.Min(100, Model.Today.EstimatedUsd * 100d / Model.DailyEstimatedBudgetUsd) : 0;
+}
+@section Styles { <link rel="stylesheet" href="/css/operations-admin.css" asp-append-version="true" /> }
+
+<header class="topbar"><span>Yönetim <span class="slash">/</span> <strong>İşlemler ve kullanım</strong></span><span class="security-pill">Yalnızca yönetici</span></header>
+<div class="workspace-content operations-admin-page">
+    <div class="page-heading">
+        <div><span class="eyebrow">SİSTEM GÖRÜNÜRLÜĞÜ</span><h1>İşlemler ve kullanım<span class="accent-dot">.</span></h1><p class="muted">Video işlerinin durumunu, AI kullanımını ve günlük limitleri tek yerden izleyin.</p></div>
+        <a class="btn btn-outline-secondary" href="/admin/providers">Sağlayıcı ayarları →</a>
+    </div>
+
+    <section class="operations-metrics" aria-label="Bugünkü kullanım özeti">
+        <article class="operation-metric"><span class="operation-metric-icon" aria-hidden="true">↗</span><div><small>API çağrısı</small><strong>@Model.Today.Calls</strong><span>@Model.Today.FailedOrUncertain başarısız veya belirsiz</span></div></article>
+        <article class="operation-metric"><span class="operation-metric-icon" aria-hidden="true">◷</span><div><small>İşlenen ses</small><strong>@Model.Today.AudioMinutes.ToString("F1") <em>dk</em></strong><span>Bugün, UTC</span></div></article>
+        <article class="operation-metric"><span class="operation-metric-icon" aria-hidden="true">◇</span><div><small>Tahmini maliyet</small><strong>$@Model.Today.EstimatedUsd.ToString("F4")</strong><span>Fatura niteliğinde değildir</span></div></article>
+        <article class="operation-metric"><span class="operation-metric-icon" aria-hidden="true">✓</span><div><small>Sağlayıcı bildirimi</small><strong>$@Model.Today.ReportedUsd.ToString("F4")</strong><span>@Model.Today.ReportedCostCalls maliyetli çağrı</span></div></article>
+    </section>
+
+    <section class="provider-panel usage-limits-panel">
+        <div class="section-heading"><div><span class="eyebrow">GÜNLÜK SINIRLAR</span><h2>Kullanım kontrolü</h2></div>@if (Model.Today.UnpricedCalls > 0) { <span class="status-badge status-awaitingtranscript">@Model.Today.UnpricedCalls tarifesiz çağrı</span> }</div>
+        <div class="usage-limit-grid">
+            <div class="usage-limit"><div><strong>Çağrı limiti</strong><span>@Model.Today.Calls / @Model.DailyCallLimit</span></div><progress value="@callPercent" max="100">@callPercent.ToString("F0")%</progress></div>
+            <div class="usage-limit"><div><strong>Tahmini bütçe</strong><span>$@Model.Today.EstimatedUsd.ToString("F4") / $@Model.DailyEstimatedBudgetUsd.ToString("F2")</span></div><progress value="@budgetPercent" max="100">@budgetPercent.ToString("F0")%</progress></div>
+        </div>
+        <p class="usage-note"><span aria-hidden="true">ⓘ</span> Bilinmeyen tarifeler dolar sınırına eklenemez; çağrı limiti yine uygulanır. Kesilmiş sağlayıcı çağrıları da ücret doğurabilir.</p>
+    </section>
+
+    <section class="provider-panel operations-jobs-panel">
+        <div class="section-heading"><div><span class="eyebrow">SON HAREKETLER</span><h2>Video işlemleri</h2><p class="muted">En son oluşturulan 100 video işi.</p></div><span class="count-badge">@Model.Jobs.Count kayıt</span></div>
+        @if (Model.Jobs.Count == 0)
+        {
+            <div class="operations-empty"><span aria-hidden="true">◷</span><strong>Henüz işlem yok</strong><p>Video işleri başladığında burada görünecek.</p></div>
+        }
+        else
+        {
+            <div class="table-responsive"><table class="operations-table"><thead><tr><th>Video</th><th>Durum</th><th>İşlem adımı</th><th>Deneme</th><th>Hata kodu</th></tr></thead><tbody>
+            @foreach (var job in Model.Jobs)
+            {
+                var statusClass = job.Status.ToString().ToLowerInvariant();
+                <tr><td data-label="Video"><a href="/videos/@job.Id">@job.Title</a></td><td data-label="Durum"><span class="job-status job-status-@statusClass">@job.Status</span>@if (job.CancelRequested) { <small class="cancel-requested">İptal istendi</small> }</td><td data-label="İşlem adımı">@job.Stage</td><td data-label="Deneme">@job.Attempts</td><td data-label="Hata kodu">@if (string.IsNullOrWhiteSpace(job.ErrorCode)) { <span class="no-error">—</span> } else { <code>@job.ErrorCode</code> }</td></tr>
+            }
+            </tbody></table></div>
+        }
+    </section>
+</div>

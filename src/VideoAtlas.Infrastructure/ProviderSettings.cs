@@ -42,6 +42,12 @@ public sealed class ProviderEndpointPolicy(IOptions<ProviderSecurityOptions> opt
 {
     public void Validate(string endpoint, string kind)
     {
+        if (kind == "local-whisper")
+        {
+            if (!string.IsNullOrEmpty(endpoint))
+                throw new AppException(400, "provider_endpoint", "Yerel Whisper için bir uzak uç nokta tanımlanamaz.");
+            return;
+        }
         if (kind == "ollama")
         {
             if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var local) || local.Scheme != "http" ||
@@ -52,7 +58,8 @@ public sealed class ProviderEndpointPolicy(IOptions<ProviderSecurityOptions> opt
         }
         if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) || uri.Scheme != "https" ||
             uri.UserInfo.Length > 0 || uri.Query.Length > 0 || uri.Fragment.Length > 0 ||
-            !uri.IsDefaultPort || !options.Value.AllowedHosts.Contains(uri.IdnHost, StringComparer.OrdinalIgnoreCase))
+            !uri.IsDefaultPort || !(options.Value.AllowedHosts.Contains(uri.IdnHost, StringComparer.OrdinalIgnoreCase) ||
+                kind == "n8n" && uri.IdnHost.EndsWith(".app.n8n.cloud", StringComparison.OrdinalIgnoreCase)))
             throw new AppException(400, "provider_endpoint", "HTTPS uç noktası sunucunun izinli host listesinde olmalı; port, kullanıcı bilgisi, sorgu ve fragment içermemelidir.");
         var expected = kind switch { "openai" => "api.openai.com", "openrouter" => "openrouter.ai", "elevenlabs" => "api.elevenlabs.io", _ => null };
         if (expected is not null && !uri.IdnHost.Equals(expected, StringComparison.OrdinalIgnoreCase))
@@ -72,6 +79,7 @@ public sealed class ProviderSettingsStore(AppDbContext db, IDataProtectionProvid
         var profiles = new[]
         {
             Profile("speech-elevenlabs", "ElevenLabs Scribe", ProviderCapability.Speech, "elevenlabs", "https://api.elevenlabs.io/v1/", "scribe_v1"),
+            Profile("speech-local-whisper", "Yerel Whisper", ProviderCapability.Speech, "local-whisper", "", "large-v3-turbo"),
             Profile("speech-openai", "OpenAI Whisper", ProviderCapability.Speech, "openai", "https://api.openai.com/v1/", legacy.TranscriptionModel),
             Profile("speech-azure", "Azure Speech Fast Transcription", ProviderCapability.Speech, "azure-speech", "", "tr-TR"),
             Profile("speech-n8n", "n8n STT akışı", ProviderCapability.Speech, "n8n", "", "speech-workflow-v1"),
@@ -114,6 +122,9 @@ public sealed class ProviderSettingsStore(AppDbContext db, IDataProtectionProvid
         if (p.Version != command.Version) throw Conflict();
         var endpoint = command.Endpoint.Trim();
         endpoints.Validate(endpoint, p.Kind);
+        if (p.Kind == "n8n" && Uri.TryCreate(endpoint, UriKind.Absolute, out var n8nEndpoint) &&
+            (n8nEndpoint.AbsolutePath.Contains("/webhook-test/", StringComparison.OrdinalIgnoreCase) || n8nEndpoint.AbsolutePath is "/" or ""))
+            throw new AppException(400, "provider_endpoint", "n8n için test adresi değil yayınlanmış production webhook adresi kullanılmalıdır.");
         if (string.IsNullOrWhiteSpace(command.Model) || command.Model.Length > 200 || command.Model.Any(char.IsControl) ||
             command.Dimensions is < 128 or > 3072 || command.NewSecret?.Length > 4096 ||
             command.NewSecret?.Any(char.IsControl) == true || (command.RemoveSecret && !string.IsNullOrEmpty(command.NewSecret)))
@@ -162,7 +173,7 @@ public sealed class ProviderSettingsStore(AppDbContext db, IDataProtectionProvid
     internal ProviderConnection Connection(ProviderProfileEntity profile)
     {
         endpoints.Validate(profile.Endpoint, profile.Kind);
-        if (profile.Kind == "ollama") return new(profile.Id, profile.Kind, profile.Endpoint, profile.Model, profile.Dimensions, "");
+        if (profile.Kind is "ollama" or "local-whisper") return new(profile.Id, profile.Kind, profile.Endpoint, profile.Model, profile.Dimensions, "");
         if (profile.ProtectedSecret is null)
         {
             var secret = EnvironmentSecret(profile);

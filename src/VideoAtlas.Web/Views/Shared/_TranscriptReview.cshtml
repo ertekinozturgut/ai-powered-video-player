@@ -18,13 +18,14 @@
     <div class="dialog-heading"><div><span class="eyebrow">KAYNAĞI SESLE DOĞRULAYIN</span><h2 id="review-title">Transkript kalite kontrolü</h2></div><button type="button" class="icon-button" data-close aria-label="Kapat">×</button></div>
     <p class="muted">Uyarılar hata kanıtı veya STT güven puanı değildir. AI önerileri otomatik uygulanmaz. Zaman kodları yalnızca açık onayla değiştirilir; ham metin ve son 10 sürüm saklanır.</p>
     <div id="review-status" role="status" class="muted"></div>
+    <div id="review-progress" class="review-progress" role="status" aria-live="polite" hidden><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span id="review-progress-text">İncelenen bölüm işleniyor…</span><progress aria-label="İnceleme ilerlemesi"></progress></div>
     <div class="review-actions"><button id="review-check" type="button" class="btn btn-outline-secondary">Uyarıları yeniden tara</button><label class="check-label"><input id="review-only-issues" type="checkbox" /> Yalnızca inceleme gerekenler</label></div>
     <label for="review-segment">İncelenecek konuşma</label><select id="review-segment" class="form-select"></select>
     <div class="review-actions"><button id="review-listen" type="button" class="btn btn-outline-secondary">▷ Bölümü dinle</button><button id="review-ai" type="button" class="btn btn-outline-secondary">AI ile metni incele</button><button id="review-stt" type="button" class="btn btn-outline-secondary">Ses parçasını yeniden çözümle</button></div>
     <div class="review-actions"><button id="review-compare" type="button" class="btn btn-outline-secondary">İkinci STT ile karşılaştır</button><button id="review-align" type="button" class="btn btn-outline-secondary">Ses/metin zamanlarını hizala</button></div>
     <small class="muted">İkinci STT yönetici panelinde seçilir. Hizalama şu an ElevenLabs adaptöründe desteklenir; ücretli olabilir ve doğru metni garanti etmez.</small>
     <audio id="review-audio" controls preload="none" aria-label="İncelenen bölümün sesi"></audio>
-    <small class="muted">AI incelemesi metin/komşu bağlam kontrolüdür. Yeniden çözümleme aktif STT'ye yalnızca ilgili ses aralığını gönderir. Bu iki işlem ücretli API kullanabilir; otomatik tekrarlanmaz.</small>
+    <small class="muted">AI incelemesi metin/komşu bağlam kontrolüdür. Yeniden çözümleme aktif STT'ye yalnızca seçili konuşma ve öncesi/sonrası en fazla 3 saniyelik bağlamı gönderir; tüm kayıt yeniden işlenmez. Bu iki işlem ücretli API kullanabilir; otomatik tekrarlanmaz.</small>
     <div id="review-issues" class="review-issues"></div>
     <details><summary>İlk ham metni göster</summary><p id="review-original" class="review-original"></p></details>
     <form id="review-edit-form" class="stack-form">

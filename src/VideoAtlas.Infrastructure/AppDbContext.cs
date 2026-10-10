@@ -13,6 +13,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     public DbSet<ProviderProfileEntity> ProviderProfiles => Set<ProviderProfileEntity>();
     public DbSet<ProviderSelectionEntity> ProviderSelections => Set<ProviderSelectionEntity>();
     public DbSet<AiUsageEntry> AiUsage => Set<AiUsageEntry>();
+    public DbSet<UiLanguageEntity> UiLanguages => Set<UiLanguageEntity>();
+    public DbSet<UiTranslationEntity> UiTranslations => Set<UiTranslationEntity>();
+    public DbSet<UserLanguagePreferenceEntity> UserLanguagePreferences => Set<UserLanguagePreferenceEntity>();
+    public DbSet<UiContentDefinitionEntity> UiContentDefinitions => Set<UiContentDefinitionEntity>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -26,6 +30,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
         builder.Entity<ProviderSelectionEntity>().HasKey(p => p.Id);
         builder.Entity<ProviderSelectionEntity>().Property(p => p.Version).IsConcurrencyToken();
         builder.Entity<ProviderSelectionEntity>().Property(p => p.UpdatedAt).HasConversion(v => v.ToUnixTimeMilliseconds(), v => DateTimeOffset.FromUnixTimeMilliseconds(v));
+        builder.Entity<UiLanguageEntity>().HasKey(x => x.Code);
+        builder.Entity<UiLanguageEntity>().Property(x => x.Version).IsConcurrencyToken();
+        builder.Entity<UiLanguageEntity>().Property(x => x.UpdatedAt).HasConversion(v => v.ToUnixTimeMilliseconds(), v => DateTimeOffset.FromUnixTimeMilliseconds(v));
+        builder.Entity<UiTranslationEntity>().HasKey(x => new { x.LanguageCode, x.Key });
+        builder.Entity<UiTranslationEntity>().Property(x => x.Version).IsConcurrencyToken();
+        builder.Entity<UiTranslationEntity>().Property(x => x.UpdatedAt).HasConversion(v => v.ToUnixTimeMilliseconds(), v => DateTimeOffset.FromUnixTimeMilliseconds(v));
+        builder.Entity<UserLanguagePreferenceEntity>().HasKey(x => x.UserId);
+        builder.Entity<UserLanguagePreferenceEntity>().Property(x => x.UpdatedAt).HasConversion(v => v.ToUnixTimeMilliseconds(), v => DateTimeOffset.FromUnixTimeMilliseconds(v));
+        builder.Entity<UiContentDefinitionEntity>().HasKey(x => x.Key);
         var video = builder.Entity<Video>();
         video.HasKey(v => v.Id);
         video.HasIndex(v => v.OwnerId);

@@ -11,7 +11,7 @@ public sealed class VideoPipeline(AppDbContext db, MediaProcessor media, VideoIn
 {
     public static string SpeechFingerprint(ProviderConnection connection, VideoContext context) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join('|', connection.Kind, connection.Endpoint,
-            connection.Model, JsonSerializer.Serialize(context.Terms)))));
+            connection.Model, JsonSerializer.Serialize(context.Terms), "speech-windows-v2"))));
 
     public async Task RunAsync(Video video, CancellationToken ct)
     {
@@ -29,14 +29,16 @@ public sealed class VideoPipeline(AppDbContext db, MediaProcessor media, VideoIn
                 throw new AppException(409, "stt_checkpoint_mismatch", "Tamamlanan ses parçaları farklı STT/model/sözlüğe ait. Eski ayara dönün veya ses kontrol noktalarını açıkça sıfırlayın.");
             await StageAsync(video, "speech", "Konuşmayı metne çevirme", 15, async () =>
             {
-                for (var offset = 0d; offset < video.Duration; offset += 480)
+                var windows = await media.TranscriptionWindowsAsync(video.Id, video.Duration, ct);
+                foreach (var window in windows)
                 {
                     ct.ThrowIfCancellationRequested();
+                    var offset = window.Start;
                     if (video.TranscriptChunks.Any(c => c.Offset == offset)) continue;
-                    var end = Math.Min(offset + 480, video.Duration);
-                    var audio = await media.AudioAsync(video.Id, offset, ct);
+                    var end = window.End;
+                    var audio = await media.AudioAsync(video.Id, offset, end - offset, ct);
                     if (audio is null) { video.AwaitTranscript(); return; }
-                    video.Report($"Ses parçası {video.TranscriptChunks.Count + 1}/{(int)Math.Ceiling(video.Duration / 480)} çözümleniyor", 15 + (int)(45 * offset / video.Duration));
+                    video.Report($"Konuşma parçası {video.TranscriptChunks.Count + 1}/{windows.Count} çözümleniyor", 15 + (int)(45 * offset / video.Duration));
                     await db.SaveChangesAsync(ct);
                     usage.SetOperation("transcription", end - offset);
                     var chunk = await ai.TranscribeAsync(audio, offset, video.Context, ct);
@@ -70,6 +72,7 @@ public sealed class VideoPipeline(AppDbContext db, MediaProcessor media, VideoIn
             // imported transcript, local topics, extractive chat, or sharing.
             if (video.FullReviewEnabled && await ai.IsConfiguredAsync(ct))
             {
+                var automaticSuggestions = new List<TranscriptIssue>();
                 while (video.QualityCursor < video.Segments.Count)
                 {
                     ct.ThrowIfCancellationRequested();
@@ -80,15 +83,38 @@ public sealed class VideoPipeline(AppDbContext db, MediaProcessor media, VideoIn
                     var context = video.Segments.Skip(Math.Max(0, video.QualityCursor - 1)).Take(batch.Length + (video.QualityCursor > 0 ? 1 : 0)).ToArray();
                     usage.SetOperation("quality-scan");
                     var issues = await reviewer.InspectBatchAsync(context, video.Context, ct);
-                    video.AdvanceQuality(video.QualityCursor + batch.Length, issues.Where(i => batch.Any(s => s.Id == i.SegmentId)));
+                    var scoped = issues.Where(i => batch.Any(s => s.Id == i.SegmentId)).ToArray();
+                    automaticSuggestions.AddRange(scoped);
+                    video.AdvanceQuality(video.QualityCursor + batch.Length, scoped);
                     video.Report($"Kalite incelemesi: {video.QualityCursor}/{video.Segments.Count} konuşma", 65 + (int)(12d * video.QualityCursor / video.Segments.Count));
+                    await db.SaveChangesAsync(ct);
+                }
+                var applied = video.ApplyAiSuggestions(automaticSuggestions, clock.GetUtcNow());
+                if (applied > 0)
+                {
+                    // Applied suggestions are recorded in transcript history; retain only review items
+                    // that still need a human decision, then rebuild local checks for the new text.
+                    var retained = video.TranscriptIssues.Where(issue => issue.Source != "llm-batch").ToArray();
+                    video.SetIssues(retained.Concat(TranscriptQuality.Detect(video.Segments, video.Context)));
+                    video.Report($"AI önerileri uygulandı: {applied} bölüm", 78);
                     await db.SaveChangesAsync(ct);
                 }
             }
         }, ct);
         TopicResult? topics = null;
         await StageAsync(video, "topics", "Bölüm özetleri ve konu başlıkları", 80, async () =>
-        { usage.SetOperation("topics"); topics = await ai.CategorizeAsync(video.Segments, video.Context, ct); }, ct);
+        {
+            usage.SetOperation("topics");
+            try { topics = await ai.CategorizeAsync(video.Segments, video.Context, ct); }
+            catch (AiException exception) when (exception.Code == "ai_invalid_response")
+            {
+                // Some gateway models return syntactically valid JSON with invented or
+                // non-contiguous segment IDs. Keep the video usable with deterministic,
+                // time-coded local chapters instead of failing the whole analysis.
+                topics = new(TranscriptSearch.LocalChapters(video.Segments), "keywords");
+                video.Report("AI konu yanıtı geçersiz; yerel konu başlıkları hazırlandı", 80);
+            }
+        }, ct);
         IndexBuild? built = null;
         await StageAsync(video, "index", "Anlamsal arama indeksi", 90, async () =>
         { usage.SetOperation("index"); built = await index.BuildAsync(video.Segments, ct); }, ct);

@@ -10,11 +10,24 @@
         @Html.AntiForgeryToken()
         <div asp-validation-summary="All" class="form-error" role="alert"></div>
         <input asp-for="Version" type="hidden" />
-        <div><label asp-for="Endpoint">HTTPS API taban adresi / webhook</label><input asp-for="Endpoint" class="form-control" autocomplete="off" placeholder="https://..." /><small class="muted">n8n için tam webhook adresi; diğerleri için / ile biten API taban adresi. URL içinde anahtar kullanmayın.</small></div>
-        <div><label asp-for="Model">@(profile.Kind == "azure-speech" ? "Konuşma dili (ör. tr-TR)" : "Model / deployment / workflow sürümü")</label><input asp-for="Model" class="form-control" autocomplete="off" /><small class="muted">OpenRouter model kimliği provider/model biçimindedir. Azure Foundry için deployment adını girin.</small></div>
+        @if (profile.Kind == "n8n")
+        {
+            <input asp-for="Endpoint" type="hidden" /><input asp-for="Model" type="hidden" />
+            <div class="notice"><span aria-hidden="true">◇</span><div><strong>Production webhook bağlantısı</strong><p>Önce örnek akışı n8n’e aktarın, AI düğümünü yapılandırın ve workflow’u yayınlayın. Test webhook adresleri kaydedilmez.</p></div></div>
+            <div class="n8n-fields">
+                <div><label asp-for="N8nEnvironmentUrl">n8n ortam adresi</label><input asp-for="N8nEnvironmentUrl" class="form-control" autocomplete="off" placeholder="https://ornek.app.n8n.cloud" /><small class="muted">Yalnızca HTTPS. n8n Cloud otomatik kabul edilir; özel host sunucu izin listesinde olmalıdır.</small></div>
+                <div><label asp-for="N8nWorkflowId">Workflow kimliği / sürümü</label><input asp-for="N8nWorkflowId" class="form-control" autocomplete="off" placeholder="videoatlas-stt-v1" /><small class="muted">İsteklerde <code>model</code> alanı olarak akışa gönderilir.</small></div>
+                <div class="wide"><label asp-for="N8nWebhookPath">Production webhook yolu</label><input asp-for="N8nWebhookPath" class="form-control" autocomplete="off" placeholder="webhook/videoatlas-stt" /><small class="muted">n8n’den kopyaladığınız yol. <code>webhook-test</code> değil <code>webhook</code> yolu kullanılmalıdır.</small></div>
+            </div>
+        }
+        else
+        {
+            <div><label asp-for="Endpoint">HTTPS API taban adresi</label><input asp-for="Endpoint" class="form-control" autocomplete="off" placeholder="https://..." /><small class="muted">API taban adresi / ile bitmelidir. URL içinde anahtar kullanmayın.</small></div>
+            <div><label asp-for="Model">@(profile.Kind == "azure-speech" ? "Konuşma dili (ör. tr-TR)" : "Model / deployment")</label><input asp-for="Model" class="form-control" autocomplete="off" /><small class="muted">OpenRouter model kimliği provider/model biçimindedir. Azure Foundry için deployment adını girin.</small></div>
+        }
         @if (profile.Capability == ProviderCapability.Embedding) { <div><label asp-for="Dimensions">Vektör boyutu</label><input asp-for="Dimensions" class="form-control" type="number" min="128" max="3072" /><small class="muted">Modelin desteklediği boyut. Değişiklikten sonra eski videoları yeniden analiz edin.</small></div> }
         else { <input asp-for="Dimensions" type="hidden" /> }
-        <div><label for="NewSecret">Yeni API anahtarı (isteğe bağlı)</label><input id="NewSecret" name="NewSecret" type="password" class="form-control" autocomplete="new-password" maxlength="4096" value="" /><small class="muted">@(profile.HasSecret ? "Mevcut anahtar kayıtlı; görüntülenmez." : "Henüz anahtar kaydedilmedi.")</small></div>
+        <div><label for="NewSecret">@(profile.Kind == "n8n" ? "Webhook Bearer anahtarı" : "Yeni API anahtarı (isteğe bağlı)")</label><input id="NewSecret" name="NewSecret" type="password" class="form-control" autocomplete="new-password" maxlength="4096" value="" placeholder="@(profile.Kind == "n8n" ? "n8n Header Auth ile aynı gizli değer" : "")" /><small class="muted">@(profile.HasSecret ? "Mevcut gizli değer kayıtlı; görüntülenmez." : profile.Kind == "n8n" ? "n8n Header Auth değerindeki Bearer önekinden sonraki gizli anahtarı girin." : "Henüz anahtar kaydedilmedi.")</small></div>
         <label class="check-label"><input asp-for="RemoveSecret" /><span>Mevcut anahtarı kaldır. Önce sağlayıcıyı aktif yönlendirmeden çıkarın.</span></label>
         <div class="dialog-actions"><a href="/admin/providers" class="btn btn-outline-secondary">Vazgeç</a><button class="btn btn-primary" type="submit">Sağlayıcı ayarlarını kaydet</button></div>
     </form>

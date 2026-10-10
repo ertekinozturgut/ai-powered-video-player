@@ -6,8 +6,17 @@ namespace VideoAtlas.Web;
 public static class ProviderProvisioning
 {
     // Operator-only CLI, never an HTTP endpoint. Import secrets from protected stdin.
-    public static async Task RunAsync(IServiceProvider services, bool useOllama = false)
+    public static async Task RunAsync(IServiceProvider services, bool useOllama = false, bool useLocalWhisper = false)
     {
+        if (useLocalWhisper)
+        {
+            var local = services.GetRequiredService<IProviderAdministration>();
+            var localState = await local.ReadAsync(CancellationToken.None);
+            await local.SelectAsync(new("speech-local-whisper", localState.Selection.Chat, localState.Selection.Embedding,
+                localState.Selection.Version, localState.Selection.SecondarySpeech), "operator-cli", CancellationToken.None);
+            Console.WriteLine("Local Whisper speech provider selected. Existing chat and embedding providers were preserved.");
+            return;
+        }
         if (useOllama)
         {
             var local = services.GetRequiredService<IProviderAdministration>();

@@ -9,7 +9,7 @@ public sealed class VideoChat(IVideoIntelligence intelligence, ILibraryStore lib
         VideoAccess.RequireReady(video);
         usage?.SetVideo(video); usage?.SetOperation("chat");
         if (string.IsNullOrWhiteSpace(request.Question) || request.Question.Length > 2000 ||
-            request.Action is not ("question" or "summary" or "decisions" or "actions" or "section") ||
+            request.Action is not ("question" or "summary" or "highlights" or "chapters" or "decisions" or "actions" or "section") ||
             request.History?.Count > 10 || request.History?.Any(h => h is null || h.Content is null || h.Content.Length > 4000 || h.Role is not ("user" or "assistant")) == true)
             throw new AppException(400, "invalid_question", "Soruyu 1–2000 karakter arasında yazın.");
         if (request.Action == "section" && (request.Start is not { } start || request.End is not { } end ||
@@ -17,10 +17,11 @@ public sealed class VideoChat(IVideoIntelligence intelligence, ILibraryStore lib
             throw new AppException(400, "invalid_section", "Açıklanacak bölüm video süresi içinde olmalıdır.");
         if (!await library.ReserveChatAsync(video.Id, 200, ct))
             throw new AppException(429, "chat_quota", "Bu videonun günlük 200 soru sınırına ulaşıldı.");
+        if (request.Action == "chapters") return ChapterList(video);
         if (!await intelligence.IsConfiguredAsync(ct)) return Warn(video, Extract(video, request));
         var context = request.Action == "section"
             ? TranscriptSearch.Context(video.Segments.Where(s => s.Start < request.End && s.End > request.Start).ToArray(), request.Question)
-            : request.Action is "summary" or "decisions" or "actions" ? Overview(video) : await intelligence.EvidenceAsync(video, request, ct);
+            : request.Action is "summary" or "highlights" or "decisions" or "actions" ? Overview(video) : await intelligence.EvidenceAsync(video, request, ct);
         var answer = await intelligence.AnswerAsync(context, request, video.Context, ct);
         if (answer.Claims is not null)
         {
@@ -58,6 +59,15 @@ public sealed class VideoChat(IVideoIntelligence intelligence, ILibraryStore lib
         return result.OrderBy(s => s.Start).ToArray();
     }
     private static Citation Cite(TranscriptSegment s) => new(s.Id, s.Start, s.End, s.Text);
+    private static ChatAnswer ChapterList(Video video)
+    {
+        if (video.Chapters.Count == 0) return new("Bu video için henüz konu başlığı oluşturulmadı.", [], "extractive", TranscriptVersion: video.TranscriptVersion);
+        var citations = video.Chapters.Take(8).Select(chapter => video.Segments.FirstOrDefault(segment => segment.Start >= chapter.Start && segment.Start < chapter.End))
+            .Where(segment => segment is not null).Select(segment => Cite(segment!)).ToArray();
+        var answer = string.Join("\n", video.Chapters.Select((chapter, index) => $"{index + 1}. [{Time(chapter.Start)}] {chapter.Title} — {chapter.Summary}"));
+        return new(answer, citations, "extractive", TranscriptVersion: video.TranscriptVersion);
+    }
+    private static string Time(double seconds) => $"{(int)seconds / 60:00}:{(int)seconds % 60:00}";
     private static ChatAnswer Extract(Video video, ChatRequest request)
     {
         var segments = request.Action == "section" ? video.Segments.Where(s => s.Start < request.End && s.End > request.Start).ToArray() : video.Segments.ToArray();

@@ -1,6 +1,7 @@
 import { $, element, api, csrf, time, stateNames } from './common.js';
 let page = 0, videos = [], uploading = false;
 const grid = $('#library-grid');
+const english = document.documentElement.lang.toLowerCase().startsWith('en');
 async function load() {
   try {
     videos = await api(`/api/videos?page=${page}`);
@@ -8,7 +9,7 @@ async function load() {
     $('#video-count').textContent = videos.length;
     $('#previous-page').disabled = page === 0;
     $('#next-page').disabled = videos.length < 24;
-    $('#page-label').textContent = `Sayfa ${page + 1}`;
+    $('#page-label').textContent = `${english ? 'Page' : 'Sayfa'} ${page + 1}`;
     render();
   } catch (error) { $('#library-error').textContent = error.message; $('#library-error').hidden = false; }
   finally { $('#library-loading').hidden = true; }
@@ -23,17 +24,17 @@ function render() {
     const cover = element('div', 'card-cover');
     if (v.mediaReady) { const img = element('img'); img.src = `/api/videos/${v.id}/poster`; img.alt = ''; img.loading = 'lazy'; cover.append(img); }
     else cover.append(element('span', 'cover-play', '▷'));
-    cover.append(element('span', 'duration-label', v.duration ? time(v.duration) : 'Hazırlanıyor'));
+    cover.append(element('span', 'duration-label', v.duration ? time(v.duration) : (english ? 'Preparing' : 'Hazırlanıyor')));
     const body = element('div', 'card-body');
     body.append(element('span', `status-badge status-${v.status.toLowerCase()}`, stateNames[v.status]));
     body.append(element('h3', '', v.title));
-    body.append(element('p', 'muted', new Intl.DateTimeFormat('tr', {dateStyle: 'medium'}).format(new Date(v.createdAt))));
+    body.append(element('p', 'muted', new Intl.DateTimeFormat(english ? 'en' : 'tr', {dateStyle: 'medium'}).format(new Date(v.createdAt))));
     const footer = element('div', 'card-footer'), arrow = element('span', 'arrow-out');
     arrow.setAttribute('aria-hidden', 'true');
-    footer.append(element('span', '', v.status === 'Ready' ? 'Metin · Konular · Sohbet' : v.stage), arrow);
+    footer.append(element('span', '', v.status === 'Ready' ? (english ? 'Transcript · Chapters · Chat' : 'Metin · Konular · Sohbet') : v.stage), arrow);
     body.append(footer); link.append(cover, body); grid.append(link);
   }
-  if (!filtered.length && videos.length) grid.append(element('p', 'panel-empty', 'Bu aramayla eşleşen video yok.'));
+  if (!filtered.length && videos.length) grid.append(element('p', 'panel-empty', english ? 'No videos match this search.' : 'Bu aramayla eşleşen video yok.'));
 }
 $('#library-search').addEventListener('input', render);
 $('#previous-page').addEventListener('click', () => { page--; load(); });

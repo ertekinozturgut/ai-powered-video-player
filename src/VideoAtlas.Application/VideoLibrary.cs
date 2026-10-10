@@ -7,9 +7,11 @@ public sealed record LibraryLimits(long MaxUploadBytes, long UserQuotaBytes);
 public sealed record UploadCommand(string Owner, string Title, long Length, bool Consent, Stream Content, VideoContext? Context = null, bool FullReview = false);
 public sealed record ShareCommand(int Days, IReadOnlyList<string> Origins, SharePresentation? Presentation = null,
     bool RequireLogin = false, IReadOnlyList<string>? Viewers = null);
+public sealed record ShareAudienceOption(string Id, string Email);
 public interface IShareAudience
 {
     Task<IReadOnlyList<string>> ResolveAsync(IReadOnlyList<string> emails, CancellationToken ct);
+    Task<IReadOnlyList<ShareAudienceOption>> ListAsync(CancellationToken ct);
 }
 public sealed class MutationGate : IDisposable
 {
@@ -65,8 +67,10 @@ public sealed class VideoLibrary(IVideoStore videos, ILibraryStore library, IMed
     public async Task<string> ShareAsync(Video video, ShareCommand command, CancellationToken ct)
     {
         VideoAccess.RequireReady(video);
-        if (command.Days is < 1 or > 90 || command.Origins.Count is 0 or > 10)
-            throw new AppException(400, "invalid_share", "Paylaşım 1–90 gün ve en fazla 10 site için açılabilir.");
+        if (command.Days is < 0 or > 90 || command.Origins.Count is > 10)
+            throw new AppException(400, "invalid_share", "Paylaşım süresi sınırsız veya 1–90 gün; izinli site sayısı en fazla 10 olabilir.");
+        if (!command.RequireLogin && command.Origins.Count == 0)
+            throw new AppException(400, "invalid_share", "Gömme paylaşımı için en az bir izinli site seçin.");
         var origins = command.Origins.Select(ValidateOrigin).Distinct().ToArray();
         var presentation = command.Presentation ?? new();
         if (presentation.Theme is not ("orbital" or "minimal") || !double.IsFinite(presentation.StartAt) || presentation.StartAt < 0 || presentation.StartAt > video.Duration)
@@ -80,7 +84,7 @@ public sealed class VideoLibrary(IVideoStore videos, ILibraryStore library, IMed
         }
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
         video.ConfigureShare(presentation, command.RequireLogin, viewers);
-        video.Share(VideoAccess.Hash(token), clock.GetUtcNow().AddDays(command.Days), command.RequireLogin ? "'none'" : string.Join(' ', origins));
+        video.Share(VideoAccess.Hash(token), command.Days == 0 ? null : clock.GetUtcNow().AddDays(command.Days), command.RequireLogin ? "'none'" : string.Join(' ', origins));
         await videos.SaveAsync(ct);
         return token;
     }

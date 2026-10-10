@@ -1,0 +1,48 @@
+{
+  "name": "VideoAtlas - Embedding Webhook Adapter v1",
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "videoatlas-embedding", "authentication": "headerAuth", "responseMode": "responseNode", "options": {} },
+      "id": "fbe3f39b-56da-4ff9-b20a-aae77bcc61b3",
+      "name": "VideoAtlas Embedding Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-460, 0],
+      "webhookId": "videoatlas-embedding-v1"
+    },
+    {
+      "parameters": { "content": "## AI sağlayıcınızı buraya bağlayın\nWebhook JSON gövdesinde `operation=embedding`, `contractVersion=1`, `model`, `input` metin dizisi ve `dimensions` gönderir. Kendi embedding düğümünüzü ekleyin. Son düğüm `{ vectors: number[][] }` üretmeli; sıra `input` ile aynı, her vektör uzunluğu `dimensions` kadar olmalıdır.", "height": 260, "width": 430 },
+      "id": "8a199ec3-f1ac-4baa-af94-80c3bc1857bc",
+      "name": "Kurulum notu",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-280, -300]
+    },
+    {
+      "parameters": { "jsCode": "const body = $input.first().json.body ?? $input.first().json;\nif (body.operation !== 'embedding' || body.contractVersion !== 1) throw new Error('VideoAtlas embedding contract v1 bekleniyor');\nthrow new Error('CONFIGURE_EMBEDDING_PROVIDER: Bu düğümü embedding sağlayıcınızla değiştirin ve vectors çıktısını eşleyin.');" },
+      "id": "42db2247-c926-476f-9387-bb51fa3a7b95",
+      "name": "AI sağlayıcınızı buraya bağlayın",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-160, 0]
+    },
+    {
+      "parameters": { "respondWith": "json", "responseBody": "={{ $json }}", "options": {} },
+      "id": "5c4065fa-502f-480e-97bc-819dc1c860a6",
+      "name": "VideoAtlas yanıtı",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [160, 0]
+    }
+  ],
+  "connections": {
+    "VideoAtlas Embedding Webhook": { "main": [[{ "node": "AI sağlayıcınızı buraya bağlayın", "type": "main", "index": 0 }]] },
+    "AI sağlayıcınızı buraya bağlayın": { "main": [[{ "node": "VideoAtlas yanıtı", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "active": false,
+  "versionId": "77044bda-3b63-476d-b6a9-842fe9f2c518",
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": []
+}

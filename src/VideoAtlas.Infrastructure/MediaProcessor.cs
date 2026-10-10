@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 using VideoAtlas.Application;
+using VideoAtlas.Domain;
 
 namespace VideoAtlas.Infrastructure;
 
@@ -44,7 +45,25 @@ public sealed partial class MediaProcessor(IMediaStorage files, IOptions<Storage
         return duration;
     }
 
-    public Task<string?> AudioAsync(Guid id, double start, CancellationToken ct) => AudioWindowAsync(id, start, 480, "audio.mp3", ct);
+    public Task<string?> AudioAsync(Guid id, double start, double duration, CancellationToken ct) => AudioWindowAsync(id, start, duration, "audio.mp3", ct);
+
+    public async Task<IReadOnlyList<SilenceInterval>> TranscriptionWindowsAsync(Guid id, double duration, CancellationToken ct)
+    {
+        const double maximumWindow = 45, minimumWindow = 8, minimumBreak = .25;
+        var silence = await SilenceAsync(id, duration, ct);
+        var windows = new List<SilenceInterval>();
+        var start = 0d;
+        while (start < duration)
+        {
+            var limit = Math.Min(duration, start + maximumWindow);
+            var breakAt = silence.Where(interval => interval.End <= limit && interval.End - interval.Start >= minimumBreak && interval.End - start >= minimumWindow)
+                .Select(interval => interval.End).DefaultIfEmpty(limit).Max();
+            if (breakAt <= start) breakAt = limit;
+            windows.Add(new(start, breakAt));
+            start = breakAt;
+        }
+        return windows;
+    }
 
     public async Task<IReadOnlyList<VideoAtlas.Domain.SilenceInterval>> SilenceAsync(Guid id, double duration, CancellationToken ct)
     {
@@ -79,7 +98,7 @@ public sealed partial class MediaProcessor(IMediaStorage files, IOptions<Storage
         if (json.RootElement.GetProperty("streams").GetArrayLength() == 0) return null;
         var path = files.PathFor(id, filename);
         await RunAsync("ffmpeg", ["-nostdin", "-y", "-v", "error", "-ss", start.ToString(CultureInfo.InvariantCulture), "-i", video,
-            "-t", duration.ToString(CultureInfo.InvariantCulture), "-vn", "-ac", "1", "-ar", "16000", "-b:a", "48k", "-threads", "1", path], ct);
+            "-t", duration.ToString(CultureInfo.InvariantCulture), "-vn", "-af", "highpass=f=80,lowpass=f=7600,loudnorm=I=-16:TP=-1.5:LRA=11", "-ac", "1", "-ar", "16000", "-b:a", "48k", "-threads", "1", path], ct);
         return path;
     }
 

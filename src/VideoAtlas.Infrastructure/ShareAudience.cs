@@ -6,6 +6,10 @@ namespace VideoAtlas.Infrastructure;
 
 public sealed class ShareAudience(AppDbContext db) : IShareAudience
 {
+    public async Task<IReadOnlyList<ShareAudienceOption>> ListAsync(CancellationToken ct) =>
+        await db.Users.AsNoTracking().Where(user => user.Email != null).OrderBy(user => user.NormalizedEmail)
+            .Select(user => new ShareAudienceOption(user.Id, user.Email!)).ToArrayAsync(ct);
+
     public async Task<IReadOnlyList<string>> ResolveAsync(IReadOnlyList<string> emails, CancellationToken ct)
     {
         if (emails.Any(e => e is null || e.Length > 254 || !MailAddress.TryCreate(e, out var address) || address.Address != e.Trim()))

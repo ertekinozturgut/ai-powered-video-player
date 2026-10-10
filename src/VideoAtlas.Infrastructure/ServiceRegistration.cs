@@ -21,6 +21,8 @@ public static class ServiceRegistration
         services.AddOptions<ProviderCredentialOptions>().Bind(config.GetSection("ProviderCredentials"));
         services.AddScoped<ProviderSettingsStore>();
         services.AddScoped<IProviderAdministration>(s => s.GetRequiredService<ProviderSettingsStore>());
+        services.AddScoped<LocalizationStore>();
+        services.AddScoped<ILocalizationAdministration>(s => s.GetRequiredService<LocalizationStore>());
         services.AddSingleton<ProviderEndpointPolicy>();
         services.AddScoped<IAiProviderFactory, AiProviderFactory>();
         services.AddScoped<ProviderTransport>();
@@ -75,6 +77,7 @@ public static class ServiceRegistration
         }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false })
           .RemoveAllLoggers();
         services.AddScoped<ISpeechToTextAdapter, ElevenLabsSpeechAdapter>();
+        services.AddScoped<ISpeechToTextAdapter, LocalWhisperSpeechAdapter>();
         services.AddScoped<ISpeechToTextAdapter, OpenAiSpeechAdapter>();
         services.AddScoped<ISpeechToTextAdapter, AzureSpeechAdapter>();
         services.AddScoped<ISpeechToTextAdapter, N8nAdapter>();

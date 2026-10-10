@@ -4,7 +4,7 @@ import { setupReview } from './review.js';
 import { setupOperations } from './operations.js';
 const app = $('#player-app'), base = app.dataset.api, embedded = app.dataset.embedded === 'true';
 const video = $('#video');
-let detail, ready = false, history = [], asking = false, timer, activeId = -1, sourceSet = false;
+let detail, ready = false, history = [], asking = false, timer, activeId = -1, sourceSet = false, selectingSection = false;
 const review = embedded ? null : setupReview(base, () => detail, async () => { clearTimeout(timer); await load(); });
 const operations = embedded ? null : setupOperations(base, async () => { clearTimeout(timer); await load(); });
 const quickEdit = embedded ? null : $('#quick-edit-dialog');
@@ -111,12 +111,12 @@ function editButton(label, action) {
 function openTranscriptEdit(segment) {
   $('#quick-edit-kind').textContent = 'METİN DÖKÜMÜ'; $('#quick-edit-title').textContent = 'Konuşmayı düzelt'; $('#quick-edit-help').textContent = 'Metni veya zaman kodlarını kaydetmeden önce ilgili sesi dinleyerek doğrulayın. Kaydetme, konu başlıklarını ve AI indeksini yeniden hazırlar.';
   $('#quick-edit-index').value = segment.id; $('#quick-edit-text').value = segment.text; $('#quick-edit-start').value = segment.start; $('#quick-edit-end').value = segment.end; $('#quick-edit-verified').checked = false;
-  $('#quick-edit-chapter-fields').hidden = true; $('label[for="quick-edit-text"]').hidden = false; $('#quick-edit-text').hidden = false; $('#quick-edit-text').required = true; $('#quick-edit-verified-label').hidden = false; $('#quick-edit-verified').required = true; $('#quick-edit-error').textContent = ''; quickEdit.dataset.kind = 'transcript'; quickEdit.showModal();
+  $('#quick-edit-chapter-fields').hidden = true; $('label[for="quick-edit-text"]').hidden = false; $('#quick-edit-text').hidden = false; $('#quick-edit-text').required = true; $('#quick-edit-verified-label').hidden = false; $('#quick-edit-verified').required = true; $('#quick-edit-error').textContent = ''; quickEdit.dataset.kind = 'transcript'; quickEdit.dataset.originalText = segment.text; quickEdit.dataset.reviewVersion = String(detail.reviewVersion); quickEdit.showModal();
 }
 function openChapterEdit(chapter, index) {
   $('#quick-edit-kind').textContent = 'KONU BAŞLIĞI'; $('#quick-edit-title').textContent = 'Konu başlığını düzenle'; $('#quick-edit-help').textContent = 'Başlık, özet, kategori ve zaman aralığını düzenleyin. Bu değişiklik video metnini veya anlamsal indeksi değiştirmez.';
   $('#quick-edit-index').value = index; $('#quick-edit-title-input').value = chapter.title; $('#quick-edit-category').value = chapter.category; $('#quick-edit-summary').value = chapter.summary; $('#quick-edit-start').value = chapter.start; $('#quick-edit-end').value = chapter.end;
-  $('#quick-edit-chapter-fields').hidden = false; $('label[for="quick-edit-text"]').hidden = true; $('#quick-edit-text').hidden = true; $('#quick-edit-text').required = false; $('#quick-edit-verified-label').hidden = true; $('#quick-edit-verified').required = false; $('#quick-edit-error').textContent = ''; quickEdit.dataset.kind = 'chapter'; quickEdit.showModal();
+  $('#quick-edit-chapter-fields').hidden = false; $('label[for="quick-edit-text"]').hidden = true; $('#quick-edit-text').hidden = true; $('#quick-edit-text').required = false; $('#quick-edit-verified-label').hidden = true; $('#quick-edit-verified').required = false; $('#quick-edit-error').textContent = ''; quickEdit.dataset.kind = 'chapter'; quickEdit.dataset.reviewVersion = String(detail.reviewVersion); quickEdit.showModal();
 }
 function highlight() {
   $('#current-time').textContent = time(video.currentTime);
@@ -144,6 +144,7 @@ function message(role, text) {
 $('#chat-form').addEventListener('submit', async event => {
   event.preventDefault(); if (!ready || asking) return;
   const question = $('#chat-question').value.trim(); if (!question) return;
+  if (selectingSection) { $('#chat-error').textContent = 'Önce başlangıç ve bitiş zamanını seçip aralığı onaylayın.'; return; }
   asking = true; $('#chat-submit').disabled = true; $('#chat-error').textContent = '';
   message('user', question); $('#chat-question').value = '';
   const loading = message('assistant', 'Konuşmalar inceleniyor…'); loading.classList.add('loading-message');
@@ -177,26 +178,53 @@ $('#chat-question').addEventListener('keydown', event => { if (event.key === 'En
 $('#chat-action').addEventListener('change', () => {
   const action = $('#chat-action').value; $('#chat-section').hidden = action !== 'section';
   document.querySelectorAll('[data-chat-action]').forEach(button => button.classList.toggle('selected', button.dataset.chatAction === action));
-  if (action === 'section') { $('#section-start').value = Math.floor(video.currentTime); $('#section-end').value = Math.min(Math.floor(video.currentTime) + 30, detail.video.duration); }
-  $('#chat-question').value = {summary:'Videonun ana noktalarını kaynaklarıyla özetle.',decisions:'Videoda açıkça alınan kararları bul.',actions:'Videodaki yapılacak işleri, belirtilmişse sorumluları ve tarihleri bul.',section:'Seçtiğim zaman aralığını açıkla.'}[action] ?? '';
+  $('#chat-question').value = {summary:'Videonun ana noktalarını kaynaklarıyla özetle.',highlights:'Videodaki en önemli noktaları, kaynak zaman kodlarıyla madde madde çıkar.',chapters:'Videonun konu başlıklarını zaman kodlarıyla listele.',decisions:'Videoda açıkça alınan kararları bul.',actions:'Videodaki yapılacak işleri, belirtilmişse sorumluları ve tarihleri bul.',section:'Seçili zaman aralığını kaynaklarıyla özetle.'}[action] ?? '';
 });
 document.querySelectorAll('[data-chat-action]').forEach(button => button.addEventListener('click', () => {
+  if (button.dataset.chatAction === 'section') {
+    selectingSection = true; $('#chat-error').textContent = ''; $('#chat-section').hidden = false;
+    $('#section-start').value = Math.floor(video.currentTime); $('#section-end').value = Math.min(Math.floor(video.currentTime) + 30, detail.video.duration);
+    document.querySelectorAll('[data-chat-action]').forEach(item => item.classList.toggle('selected', item === button));
+    $('#section-start').focus(); return;
+  }
+  selectingSection = false;
   $('#chat-action').value = button.dataset.chatAction;
   $('#chat-action').dispatchEvent(new Event('change'));
-  $('#chat-question').focus();
+  if (ready) $('#chat-form').requestSubmit();
 }));
+$('#section-confirm').addEventListener('click', () => {
+  const start = Number($('#section-start').value), end = Number($('#section-end').value), duration = detail?.video?.duration ?? 0;
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end > duration) { $('#chat-error').textContent = `Başlangıç ve bitiş zamanlarını 0:00–${time(duration)} aralığında doğru seçin.`; return; }
+  selectingSection = false; $('#chat-action').value = 'section'; $('#chat-action').dispatchEvent(new Event('change'));
+  if (ready) $('#chat-form').requestSubmit();
+});
 document.querySelectorAll('[data-question]').forEach(button => button.addEventListener('click', () => { $('#chat-question').value = button.dataset.question; if (ready) $('#chat-form').requestSubmit(); }));
 $('#clear-chat').addEventListener('click', () => { if (asking) return; history = []; $('#chat-messages').replaceChildren(element('p', 'panel-empty', 'Sohbet temizlendi. Yeni bir soru sorabilirsiniz.')); });
 if (!embedded) {
   setupSharing(base);
+  const decimal = value => Number(String(value).trim().replace(',', '.'));
+  $('#quick-edit-form').addEventListener('invalid', event => {
+    event.preventDefault();
+    $('#quick-edit-error').textContent = event.target === $('#quick-edit-verified') ? 'Kaydetmeden önce sesi dinlediğinizi onaylayın.' : 'Lütfen zorunlu alanları kontrol edin.';
+  }, true);
   $('#quick-edit-form').addEventListener('submit', async event => {
     event.preventDefault(); if (!detail || !ready) return;
     const save = $('#quick-edit-save'); save.disabled = true; $('#quick-edit-error').textContent = '';
     try {
       const isTranscript = quickEdit.dataset.kind === 'transcript';
+      const start = decimal($('#quick-edit-start').value), end = decimal($('#quick-edit-end').value);
+      if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start) throw new Error('Başlangıç ve bitiş zamanlarını doğru girin.');
+      const latest = await api(base);
+      if (latest.reviewVersion !== Number(quickEdit.dataset.reviewVersion)) {
+        const current = isTranscript && latest.segments.find(segment => segment.id === Number($('#quick-edit-index').value));
+        if (!current || current.text !== quickEdit.dataset.originalText) {
+          detail = latest; render(); review?.update(detail);
+          throw new Error('Bu konuşma siz düzenlerken değişti. Güncel metin yüklendi; lütfen düzenlemeyi tekrar açın.');
+        }
+      }
       const body = isTranscript
-        ? {version: detail.reviewVersion, segmentId: Number($('#quick-edit-index').value), text: $('#quick-edit-text').value, audioVerified: $('#quick-edit-verified').checked, start: Number($('#quick-edit-start').value), end: Number($('#quick-edit-end').value)}
-        : {version: detail.reviewVersion, chapterIndex: Number($('#quick-edit-index').value), title: $('#quick-edit-title-input').value, summary: $('#quick-edit-summary').value, category: $('#quick-edit-category').value, start: Number($('#quick-edit-start').value), end: Number($('#quick-edit-end').value)};
+        ? {version: latest.reviewVersion, segmentId: Number($('#quick-edit-index').value), text: $('#quick-edit-text').value, audioVerified: $('#quick-edit-verified').checked, start, end}
+        : {version: latest.reviewVersion, chapterIndex: Number($('#quick-edit-index').value), title: $('#quick-edit-title-input').value, summary: $('#quick-edit-summary').value, category: $('#quick-edit-category').value, start, end};
       await api(`${base}/review/${isTranscript ? 'edit' : 'chapters/edit'}`, {method: 'POST', body: JSON.stringify(body)});
       quickEdit.close(); clearTimeout(timer); await load(true);
       toast(isTranscript ? 'Metin kaydedildi; konu başlıkları ve AI indeksi yeniden hazırlanıyor.' : 'Konu başlığı kaydedildi.');

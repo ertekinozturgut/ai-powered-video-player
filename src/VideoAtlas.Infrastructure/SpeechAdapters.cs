@@ -1,9 +1,102 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using VideoAtlas.Application;
 using VideoAtlas.Domain;
 
 namespace VideoAtlas.Infrastructure;
+
+public sealed class LocalWhisperSpeechAdapter(ILogger<LocalWhisperSpeechAdapter> logger) : ISpeechToTextAdapter
+{
+    public string Kind => "local-whisper";
+
+    public Task<IReadOnlyList<TranscriptSegment>> TranscribeAsync(ProviderConnection connection, string audioPath, double offset, CancellationToken ct) =>
+        TranscribeAsync(connection, audioPath, offset, VideoContext.Empty, ct);
+
+    public async Task<IReadOnlyList<TranscriptSegment>> TranscribeAsync(ProviderConnection connection, string audioPath, double offset, VideoContext context, CancellationToken ct)
+    {
+        if (!File.Exists(audioPath)) throw new AppException(409, "media_missing", "Transkripsiyon için ses dosyası bulunamadı.");
+        var outputDirectory = Path.Combine(Path.GetTempPath(), "videoatlas-whisper", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(outputDirectory);
+        try
+        {
+            var start = new ProcessStartInfo
+            {
+                FileName = ResolveExecutable(),
+                WorkingDirectory = outputDirectory,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            start.Environment["PYTHONIOENCODING"] = "utf-8";
+            start.ArgumentList.Add(audioPath);
+            start.ArgumentList.Add("--model");
+            start.ArgumentList.Add(ValidModel(connection.Model));
+            start.ArgumentList.Add("--output_dir");
+            start.ArgumentList.Add(outputDirectory);
+            start.ArgumentList.Add("--output_format");
+            start.ArgumentList.Add("srt");
+            start.ArgumentList.Add("--verbose");
+            start.ArgumentList.Add("False");
+            start.ArgumentList.Add("--fp16");
+            start.ArgumentList.Add("False");
+            if (context.Language is "tr" or "en")
+            {
+                start.ArgumentList.Add("--language");
+                start.ArgumentList.Add(context.Language);
+            }
+
+            using var process = Process.Start(start) ?? throw new AiException("ai_unavailable");
+            var output = process.StandardOutput.ReadToEndAsync(ct);
+            var error = process.StandardError.ReadToEndAsync(ct);
+            await process.WaitForExitAsync(ct);
+            await Task.WhenAll(output, error);
+            if (process.ExitCode != 0)
+            {
+                logger.LogWarning("Local Whisper exited with code {ExitCode}.", process.ExitCode);
+                throw new AiException("ai_unavailable");
+            }
+            var srt = Directory.EnumerateFiles(outputDirectory, "*.srt", SearchOption.TopDirectoryOnly).SingleOrDefault();
+            if (srt is null) throw new AiException("ai_invalid_response");
+            // Pipeline windows are short; keep a generous parser bound so valid relative SRT timestamps survive.
+            var segments = Subtitles.Parse(await File.ReadAllTextAsync(srt, ct), 3600)
+                .Select((segment, index) => new TranscriptSegment(index, segment.Start + offset, segment.End + offset, segment.Text))
+                .ToArray();
+            return ProviderResponse.ValidateSegments(segments, offset);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (AppException) { throw; }
+        catch (AiException) { throw; }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Local Whisper could not transcribe an audio chunk.");
+            throw new AiException("ai_unavailable");
+        }
+        finally
+        {
+            try { Directory.Delete(outputDirectory, true); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    private static string ResolveExecutable()
+    {
+        var configured = Environment.GetEnvironmentVariable("WHISPER_EXECUTABLE");
+        if (!string.IsNullOrWhiteSpace(configured))
+        {
+            if (!Path.IsPathFullyQualified(configured) || !File.Exists(configured))
+                throw new AppException(400, "whisper_missing", "WHISPER_EXECUTABLE geçerli bir Whisper çalıştırılabilir dosyasını göstermiyor.");
+            return configured;
+        }
+        return "whisper";
+    }
+
+    private static string ValidModel(string model) => model is "tiny" or "base" or "small" or "medium" or "large" or "turbo" or "large-v3" or "large-v3-turbo"
+        ? model == "base" ? "large-v3-turbo" : model : "large-v3-turbo";
+}
 
 public sealed class ElevenLabsSpeechAdapter(ProviderTransport transport) : ISpeechToTextAdapter
 {

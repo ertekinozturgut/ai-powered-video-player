@@ -1,0 +1,48 @@
+{
+  "name": "VideoAtlas - LLM Webhook Adapter v1",
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "videoatlas-chat", "authentication": "headerAuth", "responseMode": "responseNode", "options": {} },
+      "id": "1d7ac444-616e-41c2-a1cb-9a10c8282ca1",
+      "name": "VideoAtlas LLM Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-460, 0],
+      "webhookId": "videoatlas-chat-v1"
+    },
+    {
+      "parameters": { "content": "## AI sağlayıcınızı buraya bağlayın\nWebhook JSON gövdesinde `operation=chat`, `contractVersion=1`, `model`, `system`, `data`, `responseFormat=json` ve `maxOutputTokens` gönderir. Kendi LLM düğümünüzü ekleyin. Son düğüm `{ content: \"LLM tarafından üretilen geçerli JSON metni\" }` üretmelidir.", "height": 250, "width": 430 },
+      "id": "c01166cd-0c08-4fea-a168-018b6f16fe64",
+      "name": "Kurulum notu",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-280, -300]
+    },
+    {
+      "parameters": { "jsCode": "const body = $input.first().json.body ?? $input.first().json;\nif (body.operation !== 'chat' || body.contractVersion !== 1) throw new Error('VideoAtlas chat contract v1 bekleniyor');\nthrow new Error('CONFIGURE_LLM_PROVIDER: Bu düğümü LLM sağlayıcınızla değiştirin ve content çıktısını eşleyin.');" },
+      "id": "58b2e3c3-aedd-455d-9d1d-cbbb7ff1d4c4",
+      "name": "AI sağlayıcınızı buraya bağlayın",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-160, 0]
+    },
+    {
+      "parameters": { "respondWith": "json", "responseBody": "={{ $json }}", "options": {} },
+      "id": "d4bad067-e3e6-4446-b88d-ce70bb8e9c5b",
+      "name": "VideoAtlas yanıtı",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [160, 0]
+    }
+  ],
+  "connections": {
+    "VideoAtlas LLM Webhook": { "main": [[{ "node": "AI sağlayıcınızı buraya bağlayın", "type": "main", "index": 0 }]] },
+    "AI sağlayıcınızı buraya bağlayın": { "main": [[{ "node": "VideoAtlas yanıtı", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {},
+  "settings": { "executionOrder": "v1" },
+  "active": false,
+  "versionId": "327bc11c-f36a-4c88-9c42-6eaaf88c1ae3",
+  "meta": { "templateCredsSetupCompleted": false },
+  "tags": []
+}

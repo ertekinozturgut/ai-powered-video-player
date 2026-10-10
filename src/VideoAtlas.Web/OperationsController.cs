@@ -28,7 +28,7 @@ public sealed class OperationsController(VideoAccess access, IVideoStore store, 
         var v = await access.OwnedAsync(id, Owner, ct);
         var usage = await UsageQueries.SummaryAsync(db.AiUsage.AsNoTracking().Where(u => u.VideoId == id), ct);
         return Ok(new VideoOperationsView(v.ReviewVersion, v.ProcessingSteps, v.ProcessingAttempts, v.TranscriptChunks.Count,
-            (int)Math.Ceiling(v.Duration / 480), v.CancelRequested, v.FullReviewEnabled, v.QualityCursor, v.Segments.Count,
+            (int)Math.Ceiling(v.Duration / 45), v.CancelRequested, v.FullReviewEnabled, v.QualityCursor, v.Segments.Count,
             v.DeleteAfter, usage, limits.Value.MaxCallsPerVideoDay, limits.Value.MaxEstimatedUsdPerOwnerDay));
     }
     [HttpPost("cancel"), TypeFilter(typeof(MutationFilter))]

@@ -23,7 +23,7 @@ export function setupOperations(base, refresh) {
   }
   $('#cancel-job').addEventListener('click', () => run('cancel'));
   $('#stop-full-review').addEventListener('click', () => { if (confirm('Tam metin AI kalite taraması kapatılıp kalan analiz aşamaları çalıştırılacak; konu/indeks API ücreti doğabilir. Devam edilsin mi?')) run('quality', {enabled:false}); });
-  $('#full-review-job').addEventListener('click', () => { if (confirm('Tüm metin etkin AI sağlayıcısına gönderilecek ve ücret doğurabilir. Başlatılsın mı?')) run('quality', {enabled:true}); });
+  $('#full-review-job').addEventListener('click', () => { if (confirm('Tüm metin etkin AI sağlayıcısına gönderilecek ve ücret doğurabilir. Yalnızca bağlamla doğrudan desteklenen AI düzeltmeleri analiz sonunda otomatik uygulanır. Başlatılsın mı?')) run('quality', {enabled:true}); });
   $('#reset-chunks').addEventListener('click', () => { if (confirm('Kaydedilmiş STT parçaları silinecek ve ses tekrar ücretli çözümlenebilecek. Devam edilsin mi?')) run('reset-checkpoints'); });
   $('#retention-form').addEventListener('submit', e => { e.preventDefault(); if (!busy) run('retention', {days:Number($('#retention-days').value),confirmDeletion:$('#retention-confirm').checked}); });
   return {update};

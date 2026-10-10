@@ -67,9 +67,11 @@ builder.Services.AddRateLimiter(o =>
 var app = builder.Build();
 Directory.CreateDirectory(dataRoot);
 var accountCommand = args.Any(a => a is "--create-user" or "--reset-password" or "--grant-admin" or "--revoke-admin");
-var providerCommand = args.Contains("--configure-providers", StringComparer.Ordinal) || args.Contains("--configure-ollama", StringComparer.Ordinal);
+var providerCommand = args.Contains("--configure-providers", StringComparer.Ordinal) || args.Contains("--configure-ollama", StringComparer.Ordinal) || args.Contains("--configure-local-whisper", StringComparer.Ordinal);
+var languageCommandIndex = Array.IndexOf(args, "--fill-language");
+var languageCommand = languageCommandIndex >= 0 && languageCommandIndex + 1 < args.Length;
 // SQLite worker recovery assumes exactly one application process per data volume.
-using var instanceLock = accountCommand || providerCommand ? null : new FileStream(Path.Combine(dataRoot, "instance.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+using var instanceLock = accountCommand || providerCommand || languageCommand ? null : new FileStream(Path.Combine(dataRoot, "instance.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -77,9 +79,16 @@ using (var scope = app.Services.CreateScope())
     await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
     await scope.ServiceProvider.GetRequiredService<ProviderSettingsStore>().InitializeAsync(
         scope.ServiceProvider.GetRequiredService<IOptions<AiOptions>>().Value, CancellationToken.None);
+    await scope.ServiceProvider.GetRequiredService<LocalizationStore>().EnsureAsync(CancellationToken.None);
+    if (languageCommand)
+    {
+        var count = await scope.ServiceProvider.GetRequiredService<LocalizationStore>().FillWithAiAsync(args[languageCommandIndex + 1], "local-admin-cli", CancellationToken.None);
+        Console.WriteLine($"Filled {count} localization entries.");
+        return;
+    }
     if (providerCommand)
     {
-        await ProviderProvisioning.RunAsync(scope.ServiceProvider, args.Contains("--configure-ollama", StringComparer.Ordinal));
+        await ProviderProvisioning.RunAsync(scope.ServiceProvider, args.Contains("--configure-ollama", StringComparer.Ordinal), args.Contains("--configure-local-whisper", StringComparer.Ordinal));
         return;
     }
     if (accountCommand)
