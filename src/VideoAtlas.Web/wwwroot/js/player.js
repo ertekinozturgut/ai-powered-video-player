@@ -102,13 +102,17 @@ function renderTranscript() {
   const speakerName = segment => detail.speakers?.find(speaker => speaker.id === segment.speaker)?.name ?? segment.speaker?.replaceAll('_', ' ') ?? '';
   for (const segment of detail.segments.filter(s => `${speakerName(s)} ${s.text}`.toLocaleLowerCase('tr').includes(query))) {
     const row = element('div', 'transcript-row'); row.dataset.id = segment.id;
+    const aiSuggested = detail.aiSuggestedSegmentIds?.includes(segment.id) === true;
+    row.classList.toggle('ai-correction-suggested', aiSuggested);
     const seekButton = element('button', 'transcript-seek'); seekButton.type = 'button'; seekButton.title = 'Bu anda videoya git';
     seekButton.append(element('span', 'timestamp', time(segment.start)));
     if (segment.speaker) seekButton.append(element('span', 'speaker-label', speakerName(segment)));
     seekButton.append(element('span', 'segment-text', segment.text));
     seekButton.addEventListener('click', () => seek(segment.start)); row.append(seekButton);
     const actions = element('div', 'segment-actions');
-    if (detail.uncertainSegmentIds?.includes(segment.id)) {
+    if (aiSuggested) {
+      actions.append(element('span', 'review-badge possible-error-badge', 'Hata Olabilir'));
+    } else if (detail.uncertainSegmentIds?.includes(segment.id)) {
       actions.append(element('span', 'review-badge', 'İnceleme gerekli'));
     }
     if (!embedded) { const inspect = element('button', 'inline-edit inline-inspect', 'AI ile düzelt'); inspect.type = 'button'; inspect.title = 'Konuşmayı genel bağlamla AI üzerinden incele ve düzeltme öner'; inspect.setAttribute('aria-label', inspect.title); inspect.addEventListener('click', () => review?.inspectSegment(segment.id)); actions.append(inspect); }

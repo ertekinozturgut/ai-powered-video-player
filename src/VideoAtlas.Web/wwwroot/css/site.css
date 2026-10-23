@@ -237,6 +237,9 @@ progress { width: 100%; height: 7px; accent-color: var(--primary); }
 .transcript-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: flex-start; gap: 8px; width: 100%; text-align: left; border: 1px solid transparent; border-radius: 12px; background: transparent; padding: 6px; color: #c2c5d4; }
 .transcript-row:hover { background: #202031; }
 .transcript-row.current { border-color: #493c69; background: linear-gradient(110deg, #31274499, #1d203b66); color: #f0edff; }
+.transcript-row.ai-correction-suggested { border-color: #8d583f; background: linear-gradient(110deg, #402429cc, #2a2027b8); color: #fff3ef; box-shadow: inset 3px 0 0 #ff8f70; }
+.transcript-row.ai-correction-suggested:hover { border-color: #c47757; background: linear-gradient(110deg, #4a292fcc, #30232bbf); }
+.transcript-row.ai-correction-suggested.current { border-color: #e18a68; background: linear-gradient(110deg, #51303bcc, #292846c2); box-shadow: inset 3px 0 0 #ff9a79, 0 0 0 1px #e18a6830; }
 .transcript-seek { display: flex; align-items: flex-start; gap: 15px; flex: 1; min-width: 0; text-align: left; border: 0; border-radius: 8px; background: transparent; padding: 6px; color: inherit; }
 .transcript-seek:hover, .chapter-seek:hover { background: #ffffff08; }
 .speaker-label { flex: 0 0 auto; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 2px 8px; border: 1px solid #4b4164; border-radius: 999px; background: #29223d; color: #d8ccff; font-size: 11px; font-weight: 600; text-transform: capitalize; }
@@ -246,6 +249,7 @@ progress { width: 100%; height: 7px; accent-color: var(--primary); }
 .segment-actions { display: flex; flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: 6px; padding: 4px; }
 .segment-actions .inline-edit { margin: 0; }
 .segment-actions .review-badge { align-self: center; white-space: nowrap; }
+.segment-actions .possible-error-badge { border-color: #a86348; background: #4a272d; color: #ffd8cb; }
 .owner-tools { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 17px; }
 .owner-tools .btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; font-size: 10px; line-height: 1.25; padding: 8px 12px; min-height: 40px; text-align: center; }
 .owner-tools:has(#srt-file:focus-visible) label[for="srt-file"] { outline: 3px solid var(--cyan); outline-offset: 3px; }

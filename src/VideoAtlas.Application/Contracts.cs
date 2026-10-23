@@ -8,7 +8,7 @@ public sealed record VideoDetail(VideoSummary Video, IReadOnlyList<TranscriptSeg
     IReadOnlyList<Chapter> Chapters, string AnalysisMode, bool Shared, DateTimeOffset? ShareExpiresAt, string IndexStatus = "none", bool AiConfigured = false,
     int TranscriptVersion = 0, IReadOnlyList<int>? UncertainSegmentIds = null, SharePresentation? Presentation = null, int ReviewVersion = 0,
     bool SpeakerDiarization = false, int? ExpectedSpeakerCount = null, IReadOnlyList<SpeakerView>? Speakers = null,
-    bool SpeakerDiarizationAvailable = false);
+    bool SpeakerDiarizationAvailable = false, IReadOnlyList<int>? AiSuggestedSegmentIds = null);
 public sealed record SpeakerView(string Id, string Name);
 public sealed record Citation(int SegmentId, double Start, double End, string Text);
 public sealed record ChatTurn(string Role, string Content);
@@ -73,5 +73,7 @@ public static class VideoMapping
         UncertainSegmentIds: v.TranscriptIssues.Where(i => i.Status == "pending").Select(i => i.SegmentId).Distinct().ToArray(), ReviewVersion: v.ReviewVersion,
         SpeakerDiarization: v.SpeakerDiarizationEnabled, ExpectedSpeakerCount: v.ExpectedSpeakerCount,
         Speakers: v.Segments.Select(segment => segment.Speaker).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct()
-            .Select(id => new SpeakerView(id!, v.SpeakerNames.GetValueOrDefault(id!) ?? id!.Replace('_', ' '))).ToArray());
+            .Select(id => new SpeakerView(id!, v.SpeakerNames.GetValueOrDefault(id!) ?? id!.Replace('_', ' '))).ToArray(),
+        AiSuggestedSegmentIds: v.TranscriptIssues.Where(issue => issue.Status == "pending" && issue.Source.StartsWith("llm", StringComparison.Ordinal))
+            .Select(issue => issue.SegmentId).Distinct().ToArray());
 }

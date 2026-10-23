@@ -92,6 +92,7 @@ public sealed class TranscriptQualityTests
 
         Assert.Single(video.TranscriptIssues);
         Assert.Equal(text, video.Segments[0].Text);
+        Assert.Equal([0], VideoMapping.Detail(video, TimeProvider.System.GetUtcNow()).AiSuggestedSegmentIds);
     }
     [Fact] public void HistoryRetentionIsBoundedButOriginalIsNeverReplaced()
     {
