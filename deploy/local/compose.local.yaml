@@ -13,9 +13,10 @@ services:
       Storage__Root: /data
       Accounts__AllowRegistration: "true"
       AllowedHosts: "localhost;127.0.0.1"
-      Ai__ApiKey: ""
-      ProviderCredentials__OpenRouter: ""
-      ProviderCredentials__ElevenLabs: ""
+      Ai__ApiKey: ${AI_API_KEY:-}
+      Ai__ChatModel: ${AI_CHAT_MODEL:-gpt-4o-mini}
+      ProviderCredentials__OpenRouter: ${OPENROUTER_API_KEY:-}
+      ProviderCredentials__ElevenLabs: ${ELEVENLABS_API_KEY:-}
     volumes:
       - local_data:/data
     read_only: true

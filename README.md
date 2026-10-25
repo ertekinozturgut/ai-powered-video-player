@@ -27,7 +27,44 @@ curl http://127.0.0.1:5080/health/ready
 
 Windows PowerShell'de ilk komut `Copy-Item .env.example .env` şeklindedir. Yerel/üretim, Windows/Linux, yönetici hesabı, AI seçimi, HTTPS, güncelleme ve sorun giderme adımları için [Docker kurulum kılavuzuna](docs/DOCKER.md) bakın.
 
-API anahtarı yokken uygulama yine açılır: SRT içe aktarma, anahtar kelime konuları ve açıkça etiketlenmiş alıntı araması çalışır. STT, LLM ve embedding sağlayıcıları **ayrı ayrı**, yalnızca yöneticilerin erişebildiği `/admin/providers` panelinden seçilir. Önerilen yapı: ElevenLabs `scribe_v1`, OpenRouter `openai/gpt-4.1-mini` ve `openai/text-embedding-3-small` (512 boyut). OpenAI, Azure Speech, Azure AI Foundry OpenAI v1 ve n8n adaptörleri de vardır. Anahtarlar panelden şifreli kaydedilir veya `ProviderCredentials__OpenRouter` / `ProviderCredentials__ElevenLabs` güvenli ortam bağlamalarıyla okunur; tarayıcıya geri verilmez. Yönetici rolü ve kurulum: [sağlayıcı kılavuzu](docs/PROVIDERS.md). Sohbette paylaşılmış gerçek anahtarları yenileyin. Bu ortamda canlı OpenRouter/ElevenLabs çağrıları ağ politikası nedeniyle henüz doğrulanmadı.
+## Credential ve API anahtarları nerede tanımlanır?
+
+VideoAtlas'ta iki farklı credential türü vardır:
+
+1. **AI sağlayıcı credential'ları:** ElevenLabs, OpenRouter, OpenAI, Azure veya n8n çağrıları için uygulamanın kullandığı gizli değerlerdir. Önerilen yöntem, yönetici olarak `/admin/providers` sayfasından ilgili profili açıp anahtarı kaydetmektir. Değer ASP.NET Data Protection ile şifrelenerek SQLite'ta tutulur ve tekrar gösterilmez.
+2. **VideoAtlas Analysis API credential'ları:** Harici uygulamaların VideoAtlas'a analiz göndermesi için üretilen `vat_...` anahtarlardır. Kullanıcılar `/account/profile`, yöneticiler `/admin/api` sayfasından oluşturabilir. Gizli değer yalnızca oluşturulduğu anda gösterilir; sunucuda sadece SHA-256 özeti saklanır.
+
+Docker'da OpenRouter ve ElevenLabs için alternatif olarak `.env` kullanılabilir:
+
+```dotenv
+OPENROUTER_API_KEY=
+ELEVENLABS_API_KEY=
+# Yalnızca eski OpenAI uyumlu profil için:
+AI_API_KEY=
+AI_CHAT_MODEL=gpt-4o-mini
+```
+
+`.env` dosyası Git tarafından dışlanır; gerçek anahtarları `.env.example`, `appsettings.json`, Dockerfile, kaynak kod, issue veya dokümana yazmayın. Azure, n8n ve profil bazlı OpenAI anahtarları `/admin/providers` üzerinden tanımlanır. Ortam değişkenleriyle verilen OpenRouter/ElevenLabs anahtarları veritabanına kopyalanmaz; panelden kaydedilen profil anahtarı varsa o değer önceliklidir. SQLite dosyası ile `/data/keys` Data Protection dizinini birlikte yedekleyin. Ayrıntılar: [sağlayıcı ve credential kılavuzu](docs/PROVIDERS.md), [Analysis API kılavuzu](docs/API.md).
+
+API anahtarı yokken uygulama yine açılır: SRT içe aktarma, anahtar kelime konuları ve açıkça etiketlenmiş alıntı araması çalışır. STT, LLM ve embedding sağlayıcıları **ayrı ayrı**, yalnızca yöneticilerin erişebildiği `/admin/providers` panelinden seçilir. Önerilen yapı: ElevenLabs `scribe_v1`, OpenRouter `openai/gpt-4.1-mini` ve `openai/text-embedding-3-small` (512 boyut). OpenAI, Azure Speech, Azure AI Foundry OpenAI v1 ve n8n adaptörleri de vardır. Yönetici rolü ve kurulum: [sağlayıcı kılavuzu](docs/PROVIDERS.md). Sohbette paylaşılmış gerçek anahtarları yenileyin. Bu ortamda canlı OpenRouter/ElevenLabs çağrıları ağ politikası nedeniyle henüz doğrulanmadı.
+
+## Sayfalar
+
+| Sayfa | Adres | Kullanım |
+|---|---|---|
+| Giriş / kayıt | `/account/login`, `/account/register` | Oturum açma; kayıt yalnızca izin verilen geliştirme kurulumlarında açıktır. |
+| Video ve ses kütüphanesi | `/` | Medya yükleme, analiz seçenekleri, arama ve mevcut kayıtları açma. |
+| Medya çalışma alanı | `/videos/{id}` | Oynatma, zaman kodlu transkript, konu başlıkları, sohbet, kalite kontrolü, konuşmacılar, SRT ve paylaşım. |
+| Hesabım | `/account/profile` | Ad, e-posta, dil, parola ve kullanıcıya bağlı Analysis API credential'ları. |
+| Paylaşılan oynatıcı | `/embed/{token}` | İptal edilebilir bağlantı/iframe; paylaşım ayarına göre anonim veya giriş zorunlu. |
+| Gizlilik | `/privacy` | İşleme, kullanım ve saklama açıklamaları. |
+| Sistem yönetimi | `/admin/system` | Kullanıcılar, hesap durumları, medya kayıtları, transkript ayrıntıları ve hatalar. |
+| İşlemler ve kullanım | `/admin/operations` | Kuyruk, çalışan/tamamlanan işler, AI çağrıları, maliyet ve limit görünümü. |
+| API yönetimi | `/admin/api` | Kullanıcıya credential bağlama, kapsam/süre seçme, iptal ve API istek logları. |
+| AI sağlayıcıları | `/admin/providers` | STT, ikinci STT, LLM ve embedding profillerini ayrı yapılandırma ve seçme. |
+| Dil yönetimi | `/admin/localization` | Dil ekleme, JSON içe/dışa aktarma, statik metinleri düzenleme ve AI ile eksikleri doldurma. |
+
+Ekranların adım adım kullanımı, kullanıcı/yönetici akışları ve hata durumları için [uygulama kullanım kılavuzuna](docs/USER-GUIDE.md) bakın.
 
 ## Kullanım
 
