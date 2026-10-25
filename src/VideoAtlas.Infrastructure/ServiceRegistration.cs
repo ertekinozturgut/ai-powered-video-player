@@ -62,6 +62,7 @@ public static class ServiceRegistration
         services.AddSingleton<IMediaStorage, MediaStorage>();
         services.AddScoped<VideoAccess>();
         services.AddScoped<VideoLibrary>();
+        services.AddScoped<ApiCredentialService>();
         services.AddScoped<IShareAudience, ShareAudience>();
         services.AddScoped<VideoChat>();
         services.AddScoped<TranscriptReviewService>();

@@ -11,7 +11,8 @@ namespace VideoAtlas.Web;
 
 [Route("account"), RequestSizeLimit(16384)]
 public sealed class AccountController(SignInManager<IdentityUser> signIn, UserManager<IdentityUser> users,
-    IOptions<AccountOptions> options, ILogger<AccountController> logger, ILocalizationAdministration catalog, AppDbContext db, TimeProvider clock) : Controller
+    IOptions<AccountOptions> options, ILogger<AccountController> logger, ILocalizationAdministration catalog, AppDbContext db,
+    TimeProvider clock, ApiCredentialService apiCredentials) : Controller
 {
     // Login and opt-in registration are entry points for unauthenticated users.
     [AllowAnonymous, HttpGet("login")]
@@ -63,22 +64,22 @@ public sealed class AccountController(SignInManager<IdentityUser> signIn, UserMa
         var user = await users.GetUserAsync(User) ?? throw new InvalidOperationException();
         var preference = await db.UserLanguagePreferences.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == user.Id, ct);
         var language = await catalog.ResolveLanguageAsync(user.Id, null, ct);
-        return View(new AccountPageView(new AccountProfileForm { Email = user.Email ?? user.UserName ?? "", DisplayName = preference?.DisplayName ?? "", Language = language }, await catalog.EnabledAsync(ct)));
+        return View(await BuildAccountPageAsync(user, new AccountProfileForm { Email = user.Email ?? user.UserName ?? "", DisplayName = preference?.DisplayName ?? "", Language = language }, ct));
     }
     [Authorize, HttpPost("profile")]
     public async Task<IActionResult> Profile([Bind(Prefix = "Profile")] AccountProfileForm form, CancellationToken ct)
     {
         var user = await users.GetUserAsync(User) ?? throw new InvalidOperationException();
-        if (!ModelState.IsValid) return View(new AccountPageView(form, await catalog.EnabledAsync(ct)));
+        if (!ModelState.IsValid) return View(await BuildAccountPageAsync(user, form, ct));
         var emailChanged = !string.Equals(user.Email, form.Email.Trim(), StringComparison.OrdinalIgnoreCase);
         if (emailChanged && (string.IsNullOrWhiteSpace(form.CurrentPassword) || !await users.CheckPasswordAsync(user, form.CurrentPassword)))
             ModelState.AddModelError(nameof(form.CurrentPassword), "E-posta değişikliği için mevcut parolanızı doğrulayın.");
-        if (!ModelState.IsValid) return View(new AccountPageView(form, await catalog.EnabledAsync(ct)));
+        if (!ModelState.IsValid) return View(await BuildAccountPageAsync(user, form, ct));
         if (emailChanged)
         {
             var email = form.Email.Trim(); var change = await users.SetEmailAsync(user, email);
             if (change.Succeeded) change = await users.SetUserNameAsync(user, email);
-            if (!change.Succeeded) { foreach (var error in change.Errors) ModelState.AddModelError("", error.Description); return View(new AccountPageView(form, await catalog.EnabledAsync(ct))); }
+            if (!change.Succeeded) { foreach (var error in change.Errors) ModelState.AddModelError("", error.Description); return View(await BuildAccountPageAsync(user, form, ct)); }
         }
         var preference = await db.UserLanguagePreferences.SingleOrDefaultAsync(x => x.UserId == user.Id, ct);
         if (preference is null) { preference = new UserLanguagePreferenceEntity { UserId = user.Id }; db.UserLanguagePreferences.Add(preference); }
@@ -86,11 +87,43 @@ public sealed class AccountController(SignInManager<IdentityUser> signIn, UserMa
         if (!await catalog.SetUserLanguageAsync(user.Id, form.Language, ct))
         {
             ModelState.AddModelError(nameof(form.Language), "Seçilen arayüz dili kullanıma açık değil.");
-            return View(new AccountPageView(form, await catalog.EnabledAsync(ct)));
+            return View(await BuildAccountPageAsync(user, form, ct));
         }
         Response.Cookies.Append("VideoAtlas.Language", form.Language, new CookieOptions { IsEssential = true, HttpOnly = true, Secure = Request.IsHttps, SameSite = SameSiteMode.Lax, Expires = clock.GetUtcNow().AddYears(1), Path = "/" });
         await signIn.RefreshSignInAsync(user);
         TempData["AccountMessage"] = "Hesap bilgileriniz kaydedildi."; return RedirectToAction(nameof(Profile));
+    }
+
+    [Authorize, HttpPost("api-credentials")]
+    public async Task<IActionResult> CreateApiCredential(ApiCredentialCreateForm form, CancellationToken ct)
+    {
+        var user = await users.GetUserAsync(User) ?? throw new InvalidOperationException();
+        if (!ModelState.IsValid) { TempData["AccountMessage"] = "API bilgisi oluşturulamadı; alanları kontrol edin."; return RedirectToAction(nameof(Profile)); }
+        var scopes = new List<string>();
+        if (form.Read) scopes.Add(ExternalApiScopes.Read);
+        if (form.Write) scopes.Add(ExternalApiScopes.Write);
+        if (form.Delete) scopes.Add(ExternalApiScopes.Delete);
+        try
+        {
+            var created = await apiCredentials.CreateAsync(user.Id, form.Name, scopes, form.ExpiresInDays, ct);
+            TempData["CreatedApiSecret"] = created.Secret;
+            TempData["AccountMessage"] = "API kimlik bilgisi oluşturuldu. Gizli anahtarı şimdi kopyalayın; tekrar gösterilmeyecek.";
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        { TempData["AccountMessage"] = ex.Message; }
+        return RedirectToAction(nameof(Profile));
+    }
+
+    [Authorize, HttpPost("api-credentials/{id:guid}/revoke")]
+    public async Task<IActionResult> RevokeApiCredential(Guid id, CancellationToken ct)
+    {
+        var user = await users.GetUserAsync(User) ?? throw new InvalidOperationException();
+        var credential = await db.ApiCredentials.SingleOrDefaultAsync(x => x.Id == id && x.OwnerId == user.Id, ct);
+        if (credential is null) return NotFound();
+        credential.RevokedAt ??= clock.GetUtcNow();
+        await db.SaveChangesAsync(ct);
+        TempData["AccountMessage"] = "API kimlik bilgisi iptal edildi.";
+        return RedirectToAction(nameof(Profile));
     }
 
     [Authorize, HttpGet("password")]
@@ -108,5 +141,17 @@ public sealed class AccountController(SignInManager<IdentityUser> signIn, UserMa
         await signIn.RefreshSignInAsync(user);
         TempData["AccountMessage"] = "Parolanız değiştirildi.";
         return RedirectToAction(nameof(Profile));
+    }
+
+    private async Task<AccountPageView> BuildAccountPageAsync(IdentityUser user, AccountProfileForm form, CancellationToken ct)
+    {
+        var credentials = await db.ApiCredentials.AsNoTracking().Where(x => x.OwnerId == user.Id).OrderByDescending(x => x.CreatedAt).Take(25)
+            .Select(x => new ApiCredentialView(x.Id, x.Name, x.Prefix, x.Scopes, x.CreatedAt, x.ExpiresAt, x.LastUsedAt, x.RevokedAt != null)).ToListAsync(ct);
+        var analyses = await db.Videos.AsNoTracking().Where(x => x.OwnerId == user.Id && x.CreatedVia == "api").OrderByDescending(x => x.CreatedAt).Take(25)
+            .Select(x => new ApiAnalysisView(x.Id, x.Title, x.Status, x.Stage, x.Progress, x.CreatedAt)).ToListAsync(ct);
+        var logs = await db.ApiRequestLogs.AsNoTracking().Where(x => x.OwnerId == user.Id).OrderByDescending(x => x.CreatedAt).Take(50)
+            .Select(x => new ApiRequestLogView(x.Id, x.CreatedAt, x.CredentialPrefix ?? "—", x.Method, x.Path, x.StatusCode,
+                x.DurationMs, x.VideoId, x.TraceId)).ToListAsync(ct);
+        return new(form, await catalog.EnabledAsync(ct), credentials, analyses, logs, TempData["CreatedApiSecret"] as string);
     }
 }

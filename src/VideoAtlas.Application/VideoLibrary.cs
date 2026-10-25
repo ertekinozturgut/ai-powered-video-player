@@ -4,7 +4,8 @@ using VideoAtlas.Domain;
 namespace VideoAtlas.Application;
 
 public sealed record LibraryLimits(long MaxUploadBytes, long UserQuotaBytes);
-public sealed record UploadCommand(string Owner, string Title, long Length, bool Consent, Stream Content, VideoContext? Context = null, bool FullReview = false);
+public sealed record UploadCommand(string Owner, string Title, long Length, bool Consent, Stream Content, VideoContext? Context = null,
+    bool FullReview = false, Guid? ApiCredentialId = null);
 public sealed record ReanalysisCommand(bool SpeakerDiarization, int? SpeakerCount);
 public sealed record ShareCommand(int Days, IReadOnlyList<string> Origins, SharePresentation? Presentation = null,
     bool RequireLogin = false, IReadOnlyList<string>? Viewers = null);
@@ -33,6 +34,7 @@ public sealed class VideoLibrary(IVideoStore videos, ILibraryStore library, IMed
         if (await library.UsedBytesAsync(command.Owner, ct) + command.Length > limits.UserQuotaBytes)
             throw new AppException(409, "storage_quota", "Kütüphane kotanız doldu. Önce eski videolardan bazılarını silin.");
         var video = new Video(Guid.NewGuid(), command.Owner, command.Title.Trim(), command.Length, clock.GetUtcNow());
+        if (command.ApiCredentialId is Guid credentialId) video.MarkApiCreated(credentialId);
         if (command.Context is not null) video.SetContext(TranscriptQuality.ValidateContext(command.Context.Terms, command.Context.Instructions,
             command.Context.Language, command.Context.DiarizationEnabled, command.Context.SpeakerCount));
         if (command.FullReview) video.ConfigureFullReview(true);

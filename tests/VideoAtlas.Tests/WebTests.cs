@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using VideoAtlas.Application;
@@ -179,6 +180,11 @@ public class VideoAppFactory : WebApplicationFactory<Program>
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
-        if (disposing && Directory.Exists(root)) Directory.Delete(root, true);
+        if (disposing && Directory.Exists(root))
+        {
+            SqliteConnection.ClearAllPools();
+            try { Directory.Delete(root, true); }
+            catch (IOException) { /* A hosted worker may release the temporary SQLite file immediately after disposal. */ }
+        }
     }
 }

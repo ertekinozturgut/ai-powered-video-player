@@ -100,6 +100,7 @@ public sealed class VideoWorker(IServiceScopeFactory scopes, ILogger<VideoWorker
         try
         {
             await db.AiUsage.Where(u => u.CreatedAt < now.AddDays(-30)).ExecuteDeleteAsync(ct);
+            await db.ApiRequestLogs.Where(u => u.CreatedAt < now.AddDays(-90)).ExecuteDeleteAsync(ct);
             var expired = await db.Videos.Where(v => v.DeleteAfter != null && v.DeleteAfter <= now && v.Status != VideoStatus.Queued && v.Status != VideoStatus.Processing).Take(20).ToListAsync(ct);
             foreach (var video in expired)
             {

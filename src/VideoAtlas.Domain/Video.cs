@@ -45,6 +45,8 @@ public sealed partial class Video
     [SensitiveData] public List<VideoTerm> Terms { get; private set; } = [];
     [SensitiveData] public string AnalysisInstructions { get; private set; } = "";
     public string AnalysisLanguage { get; private set; } = "tr";
+    public string CreatedVia { get; private set; } = "web";
+    public Guid? ApiCredentialId { get; private set; }
     public bool SpeakerDiarizationEnabled { get; private set; }
     public int? ExpectedSpeakerCount { get; private set; }
     [SensitiveData] public Dictionary<string, string> SpeakerNames { get; private set; } = [];
@@ -54,6 +56,12 @@ public sealed partial class Video
     public int TranscriptVersion { get; private set; }
     public int ReviewVersion { get; private set; }
     public VideoContext Context => new(Terms, AnalysisInstructions, AnalysisLanguage, SpeakerDiarizationEnabled, ExpectedSpeakerCount, SpeakerNames);
+
+    public void MarkApiCreated(Guid credentialId)
+    {
+        CreatedVia = "api";
+        ApiCredentialId = credentialId;
+    }
 
     public void SetContext(VideoContext context)
     {

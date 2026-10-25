@@ -2,7 +2,7 @@
 
 .NET 10 ile video kütüphanesi, zaman kodlu transkripsiyon, SRT dışa aktarma, konu gruplama, kaynaklı video sohbeti ve iptal edilebilir iframe paylaşımı.
 
-Geliştirme altyapısı: [ertekinozturgut/agent-squad](https://github.com/ertekinozturgut/agent-squad), MIT; kaynak sürümü ve uyarlamalar [plan belgesinde](docs/PLAN.md). Agent Squad bir AI runtime olarak sunulmaz; mimari ve kalite yaklaşımı kullanılır.
+Geliştirme altyapısı: [ertekinozturgut/agent-squad](https://github.com/ertekinozturgut/agent-squad), MIT; kaynak sürümü ve uyarlamalar [plan belgesinde](docs/PLAN.md). Agent Squad bir AI runtime olarak sunulmaz; mimari ve kalite yaklaşımı kullanılır. Üçüncü taraf entegrasyonları için kullanıcıya bağlı anahtar, kapsam, analiz, sonuç ve denetim kayıtlarını içeren [Analysis API v1](docs/API.md) bulunur.
 
 ## Hızlı başlangıç
 
@@ -14,6 +14,18 @@ bash scripts/dev.sh
 ```
 
 Geliştirme sunucusu 5080 portunu kullanır. Development ortamında kayıt açık; Production ortamında kapalıdır. Hazır veya sabit parolalı hesap yoktur. Formdan kendi geliştirme hesabınızı oluşturun. Bulut onboarding arayüzü localhost önizlemesi sağlamaz.
+
+### Docker ile çalıştırma
+
+Varsayılan Docker imajı FFmpeg, Local Whisper ve konuşmacı ayrımı bağımlılıklarını içerir:
+
+```bash
+cp .env.example .env
+docker compose -f compose.local.yaml up -d --build
+curl http://127.0.0.1:5080/health/ready
+```
+
+Windows PowerShell'de ilk komut `Copy-Item .env.example .env` şeklindedir. Yerel/üretim, Windows/Linux, yönetici hesabı, AI seçimi, HTTPS, güncelleme ve sorun giderme adımları için [Docker kurulum kılavuzuna](docs/DOCKER.md) bakın.
 
 API anahtarı yokken uygulama yine açılır: SRT içe aktarma, anahtar kelime konuları ve açıkça etiketlenmiş alıntı araması çalışır. STT, LLM ve embedding sağlayıcıları **ayrı ayrı**, yalnızca yöneticilerin erişebildiği `/admin/providers` panelinden seçilir. Önerilen yapı: ElevenLabs `scribe_v1`, OpenRouter `openai/gpt-4.1-mini` ve `openai/text-embedding-3-small` (512 boyut). OpenAI, Azure Speech, Azure AI Foundry OpenAI v1 ve n8n adaptörleri de vardır. Anahtarlar panelden şifreli kaydedilir veya `ProviderCredentials__OpenRouter` / `ProviderCredentials__ElevenLabs` güvenli ortam bağlamalarıyla okunur; tarayıcıya geri verilmez. Yönetici rolü ve kurulum: [sağlayıcı kılavuzu](docs/PROVIDERS.md). Sohbette paylaşılmış gerçek anahtarları yenileyin. Bu ortamda canlı OpenRouter/ElevenLabs çağrıları ağ politikası nedeniyle henüz doğrulanmadı.
 
@@ -42,7 +54,7 @@ CHROMIUM_PATH=/usr/bin/chromium npm run test:e2e
 docker compose up -d --build
 ```
 
-Docker Compose için önce `.env.example` içeriğini `.env` dosyasına alın; domain, ACME e-postası ve AI anahtarını güvenli şekilde girin. [Üretim işletim kılavuzu](docs/OPERATIONS.md), [test kanıtları](docs/VALIDATION.md), [mimari plan](docs/PLAN.md), [Orbital arayüz tasarımı](docs/DESIGN.md).
+Docker Compose için önce `.env.example` içeriğini `.env` dosyasına alın; domain, ACME e-postası ve AI anahtarını güvenli şekilde girin. [Docker kurulum kılavuzu](docs/DOCKER.md), [üretim işletim kılavuzu](docs/OPERATIONS.md), [test kanıtları](docs/VALIDATION.md), [mimari plan](docs/PLAN.md), [Orbital arayüz tasarımı](docs/DESIGN.md).
 
 ## Yapı
 

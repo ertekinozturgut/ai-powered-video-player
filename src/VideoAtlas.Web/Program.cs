@@ -14,8 +14,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(o => { o.Limits.MaxRequestBodySize = 540_000_000; o.AddServerHeader = false; });
 builder.Services.Configure<FormOptions>(o => { o.MultipartBodyLengthLimit = 538_000_000; o.ValueLengthLimit = 2_100_000; });
 builder.Services.AddVideoAtlas(builder.Configuration);
-builder.Services.AddAuthorization(o => o.AddPolicy("Administrator", policy =>
-    policy.RequireAuthenticatedUser().AddRequirements(new AdministratorRequirement())));
+builder.Services.AddAuthentication().AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(ApiKeyDefaults.Scheme, _ => { });
+builder.Services.AddAuthorization(o =>
+{
+    o.AddPolicy("Administrator", policy => policy.RequireAuthenticatedUser().AddRequirements(new AdministratorRequirement()));
+    foreach (var scope in ExternalApiScopes.All)
+        o.AddPolicy("ExternalApi" + (scope == ExternalApiScopes.Read ? "Read" : scope == ExternalApiScopes.Write ? "Write" : "Delete"), policy =>
+            policy.AddAuthenticationSchemes(ApiKeyDefaults.Scheme).RequireAuthenticatedUser().RequireClaim("scope", scope));
+});
 builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, AdministratorHandler>();
 builder.Services.AddControllersWithViews(o => o.Filters.Add(new Microsoft.AspNetCore.Mvc.AutoValidateAntiforgeryTokenAttribute()))
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
@@ -61,6 +67,7 @@ builder.Services.AddRateLimiter(o =>
     o.AddPolicy("chat", context => RateLimitPartition.GetFixedWindowLimiter(context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "local", _ => new() { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     o.AddConcurrencyLimiter("upload", options => { options.PermitLimit = 2; options.QueueLimit = 0; });
     o.AddPolicy("review", context => RateLimitPartition.GetFixedWindowLimiter(context.User.Identity?.Name ?? "anonymous", _ => new() { PermitLimit = 6, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    o.AddPolicy("external-api", context => RateLimitPartition.GetFixedWindowLimiter(context.User.FindFirst(ApiKeyDefaults.CredentialIdClaim)?.Value ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous", _ => new() { PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(_ => RateLimitPartition.GetConcurrencyLimiter("server", _ => new() { PermitLimit = 80, QueueLimit = 0 }));
 });
 
@@ -107,6 +114,7 @@ if (!app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Testing"
 }
 app.UseStaticFiles();
 app.UseRouting();
+app.UseMiddleware<ExternalApiAuditMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();

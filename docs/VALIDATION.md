@@ -130,6 +130,21 @@ Gerçek tarayıcıdan alınan güncel görseller:
 - Tam .NET paketinde **85 test geçti**. Kalan 21 sonuçtan 18'i mevcut WebApplicationFactory SQLite/`instance.lock` temizleme yarışı, üçü önceden kayıtlı HTTP durum/iş kuyruğu beklentileridir; yeni odaklı testlerde hata oluşmadı.
 - AI bağlam profili yalnızca transkript içindeki tekrarlar ve kullanıcı sözlüğünden kanıt üretir; sesi dinlediğini veya dış dünyadaki yazımın doğru olduğunu iddia etmez. Öneriler kullanıcı ses doğrulaması olmadan metne uygulanmaz. Otomatik konuşmacı sayısı en fazla sekiz kümeyi değerlendirir; benzer/örtüşen seslerde sabit kişi sayısı kullanılmalıdır.
 
+## Kullanıcıya bağlı üçüncü taraf analiz API'si — 23 Ekim 2026
+
+- Odaklı API güvenlik/entegrasyon testleri **2 geçti, 0 başarısız**: tek sefer gösterilen ve yalnızca özeti saklanan kimlik bilgisi, Bearer doğrulaması, kullanıcı sahipliği, kapsam reddi, API üzerinden analiz oluşturma, API kaynağının kullanıcı kaydında korunması ve denetim logu doğrulandı.
+- Tam .NET paketi seri çalıştırmada **105 geçti, 4 başarısız, 0 atlandı**. Kalanlar daha önce belgelenen iş kuyruğu/zamanlama beklentilerinde: iki HTTP `BadRequest`/`Conflict`, SRT içe aktarma sonrasında `Ready`/`Queued` ve parça devam testinde çağrı sayısı. Yeni `ExternalApiTests` içinde hata yoktur; tam paket yeşil sayılmamıştır.
+- Release publish başarıyla üretildi. EF `has-pending-model-changes` kontrolü model ile `ExternalAnalysisApi` migrasyonunun eşleştiğini doğruladı; `git diff --check` içerik hatası döndürmedi.
+- API anahtarının ham değeri, Authorization başlığı, yüklenen medya, transkript ve istek gövdeleri denetim kaydına alınmaz. Loglarda güvenli operasyon metadatası ve geri döndürülemez uzak adres özeti tutulur; 90 günlük otomatik temizlik uygulanır.
+- Canlı üçüncü taraf istemci, uzun medya, yük testi ve tarayıcı uçtan uca ekran testi bu doğrulamada çalıştırılmadı.
+
+## Docker dağıtımı — 25 Ekim 2026
+
+- Tam `final` imajı gerçek Docker Desktop Linux motorunda başarıyla oluşturuldu. Release publish, FFmpeg, SQLite araçları, CPU Torch, Local Whisper, Librosa, scikit-learn ve Resemblyzer aynı imajda yer alıyor.
+- Geçici ve izole `videoatlas-docker-smoke` projesi `127.0.0.1:5088` üzerinde çalıştırıldı. Konteyner healthcheck'i `healthy`, `/health/ready` yanıtı HTTP 200 ve gövdesi `{"status":"ready"}` oldu.
+- Konteyner içinde Whisper/Torch/Librosa/scikit-learn/Resemblyzer import testi, Whisper CLI yürütülebilirlik kontrolü ve FFmpeg sürüm kontrolü geçti. Uygulama root yerine `app` (UID 1654) kullanıcısıyla çalıştı.
+- Üretim, kök yerel ve `deploy/local` Compose dosyalarının `docker compose config` doğrulaması geçti. Gerçek domain, Caddy ACME sertifikası, GPU hızlandırma ve uzun ses yükü bu smoke testin kapsamında değildi.
+
 ## Güncel dış doğrulama gereksinimleri
 
 - **Canlı OpenAI:** kullanılabilir `Ai__ApiKey` yoktu. Gerçek konuşma tanıma doğruluğu, gerçek sağlayıcı model/hesap erişimi, ücretler ve cevapların anlamsal doğruluğu canlı hesapla doğrulanmadı. Kontrollü testleri canlı AI testi olarak değerlendirmeyin.

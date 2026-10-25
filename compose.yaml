@@ -1,6 +1,8 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      target: ${VIDEOATLAS_DOCKER_TARGET:-final}
     restart: unless-stopped
     environment:
       Ai__ApiKey: ${AI_API_KEY:-}
@@ -21,8 +23,8 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    mem_limit: 3g
-    cpus: 2
+    mem_limit: ${VIDEOATLAS_MEMORY_LIMIT:-8g}
+    cpus: ${VIDEOATLAS_CPU_LIMIT:-4}
     pids_limit: 256
     networks:
       application:

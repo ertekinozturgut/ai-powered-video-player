@@ -30,6 +30,7 @@
             {
                 <a href="/admin/system" class="nav-item @(path.StartsWithSegments("/admin/system") ? "active" : "")"><span aria-hidden="true">▤</span><span class="nav-label">@ui["nav.systemAdmin"]</span></a>
                 <a href="/admin/operations" class="nav-item @(path.StartsWithSegments("/admin/operations") ? "active" : "")"><span aria-hidden="true">◷</span><span class="nav-label">@ui["nav.operations"]</span></a>
+                <a href="/admin/api" class="nav-item @(path.StartsWithSegments("/admin/api") ? "active" : "")"><span aria-hidden="true">⌁</span><span class="nav-label">API yönetimi</span></a>
                 <a href="/admin/providers" class="nav-item @(path.StartsWithSegments("/admin/providers") ? "active" : "")" aria-label="AI sağlayıcı yönetimi"><span aria-hidden="true">⚙</span><span class="nav-label">@ui["nav.providers"]</span></a>
                 <a href="/admin/localization" class="nav-item @(path.StartsWithSegments("/admin/localization") ? "active" : "")"><span aria-hidden="true">◎</span><span class="nav-label">@ui["admin.localization"]</span></a>
             }

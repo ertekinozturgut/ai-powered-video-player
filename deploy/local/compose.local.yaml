@@ -1,7 +1,9 @@
 name: videoatlas-local
 services:
   app:
-    build: .
+    build:
+      context: ../..
+      target: ${VIDEOATLAS_DOCKER_TARGET:-final}
     image: videoatlas:local-test
     ports:
       - "127.0.0.1:${VIDEOATLAS_PORT:-5080}:8080"

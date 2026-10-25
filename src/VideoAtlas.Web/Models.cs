@@ -24,7 +24,23 @@ public sealed class AccountProfileForm
     [Required, StringLength(12)] public string Language { get; set; } = "tr";
     [DataType(DataType.Password)] public string? CurrentPassword { get; set; }
 }
-public sealed record AccountPageView(AccountProfileForm Profile, IReadOnlyList<VideoAtlas.Application.LanguageView> Languages);
+public sealed record ApiCredentialView(Guid Id, string Name, string Prefix, string Scopes, DateTimeOffset CreatedAt,
+    DateTimeOffset? ExpiresAt, DateTimeOffset? LastUsedAt, bool Revoked);
+public sealed record ApiAnalysisView(Guid Id, string Title, VideoAtlas.Domain.VideoStatus Status, string Stage,
+    int Progress, DateTimeOffset CreatedAt);
+public sealed record ApiRequestLogView(long Id, DateTimeOffset CreatedAt, string Credential, string Method, string Path,
+    int StatusCode, long DurationMs, Guid? VideoId, string TraceId);
+public sealed record AccountPageView(AccountProfileForm Profile, IReadOnlyList<VideoAtlas.Application.LanguageView> Languages,
+    IReadOnlyList<ApiCredentialView> ApiCredentials, IReadOnlyList<ApiAnalysisView> ApiAnalyses,
+    IReadOnlyList<ApiRequestLogView> ApiLogs, string? CreatedApiSecret = null);
+public sealed class ApiCredentialCreateForm
+{
+    [Required, StringLength(80, MinimumLength = 1)] public string Name { get; set; } = "Integration";
+    [Range(0, 365)] public int ExpiresInDays { get; set; } = 90;
+    public bool Read { get; set; } = true;
+    public bool Write { get; set; } = true;
+    public bool Delete { get; set; }
+}
 public sealed class UploadForm
 {
     [Required, StringLength(180)] public string Title { get; set; } = "";

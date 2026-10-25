@@ -17,6 +17,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
     public DbSet<UiTranslationEntity> UiTranslations => Set<UiTranslationEntity>();
     public DbSet<UserLanguagePreferenceEntity> UserLanguagePreferences => Set<UserLanguagePreferenceEntity>();
     public DbSet<UiContentDefinitionEntity> UiContentDefinitions => Set<UiContentDefinitionEntity>();
+    public DbSet<ApiCredentialEntity> ApiCredentials => Set<ApiCredentialEntity>();
+    public DbSet<ApiRequestLogEntity> ApiRequestLogs => Set<ApiRequestLogEntity>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -39,6 +41,31 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
         builder.Entity<UserLanguagePreferenceEntity>().HasKey(x => x.UserId);
         builder.Entity<UserLanguagePreferenceEntity>().Property(x => x.UpdatedAt).HasConversion(v => v.ToUnixTimeMilliseconds(), v => DateTimeOffset.FromUnixTimeMilliseconds(v));
         builder.Entity<UiContentDefinitionEntity>().HasKey(x => x.Key);
+        var credential = builder.Entity<ApiCredentialEntity>();
+        credential.HasKey(x => x.Id);
+        credential.HasIndex(x => x.Prefix).IsUnique();
+        credential.HasIndex(x => new { x.OwnerId, x.CreatedAt });
+        credential.HasOne<IdentityUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Cascade);
+        credential.Property(x => x.Name).HasMaxLength(80);
+        credential.Property(x => x.Prefix).HasMaxLength(16);
+        credential.Property(x => x.SecretHash).HasMaxLength(64);
+        credential.Property(x => x.Scopes).HasMaxLength(100);
+        credential.Property(x => x.CreatedAt).HasConversion(v => v.ToUnixTimeMilliseconds(), v => DateTimeOffset.FromUnixTimeMilliseconds(v));
+        credential.Property(x => x.ExpiresAt).HasConversion(v => v.HasValue ? v.Value.ToUnixTimeMilliseconds() : (long?)null, v => v.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(v.Value) : null);
+        credential.Property(x => x.LastUsedAt).HasConversion(v => v.HasValue ? v.Value.ToUnixTimeMilliseconds() : (long?)null, v => v.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(v.Value) : null);
+        credential.Property(x => x.RevokedAt).HasConversion(v => v.HasValue ? v.Value.ToUnixTimeMilliseconds() : (long?)null, v => v.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(v.Value) : null);
+        var apiLog = builder.Entity<ApiRequestLogEntity>();
+        apiLog.HasKey(x => x.Id);
+        apiLog.HasIndex(x => new { x.OwnerId, x.CreatedAt });
+        apiLog.HasIndex(x => new { x.CredentialId, x.CreatedAt });
+        apiLog.HasOne<IdentityUser>().WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.SetNull);
+        apiLog.Property(x => x.Method).HasMaxLength(12);
+        apiLog.Property(x => x.Path).HasMaxLength(500);
+        apiLog.Property(x => x.CredentialPrefix).HasMaxLength(16);
+        apiLog.Property(x => x.RemoteAddressHash).HasMaxLength(16);
+        apiLog.Property(x => x.TraceId).HasMaxLength(100);
+        apiLog.Property(x => x.ErrorCode).HasMaxLength(100);
+        apiLog.Property(x => x.CreatedAt).HasConversion(v => v.ToUnixTimeMilliseconds(), v => DateTimeOffset.FromUnixTimeMilliseconds(v));
         var video = builder.Entity<Video>();
         video.HasKey(v => v.Id);
         video.HasIndex(v => v.OwnerId);
@@ -46,6 +73,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : Ident
         video.HasIndex(v => v.Status);
         video.Property(v => v.Title).HasMaxLength(180);
         video.Property(v => v.MediaKind).HasMaxLength(12);
+        video.Property(v => v.CreatedVia).HasMaxLength(12);
+        video.HasIndex(v => new { v.OwnerId, v.CreatedVia, v.CreatedAt });
         video.Property(v => v.CreatedAt).HasConversion(v => v.ToUnixTimeMilliseconds(), v => DateTimeOffset.FromUnixTimeMilliseconds(v));
         video.Ignore(v => v.IsBusy);
         video.Ignore(v => v.Context);
